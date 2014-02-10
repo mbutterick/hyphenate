@@ -1,5 +1,5 @@
 #lang racket/base
-(require racket/string racket/list racket/contract racket/vector)
+(require racket/string racket/list racket/contract racket/vector racket/bool)
 (require "data.rkt" "readability.rkt")
 
 (module+ test (require rackunit))
@@ -14,11 +14,12 @@
 ;;; (also in the public domain)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(provide hyphenate hyphenatef)
+(provide hyphenate hyphenatef unhyphenate)
 
 ;; global data, define now but set! them later (because they're potentially big & slow)
 (define exceptions #f)
 (define pattern-tree #f)
+(define default-min-length 5)
 
 ;; Convert the hyphenated pattern into a point array for use later.
 (define/contract (list->exceptions exn-strings) 
@@ -106,8 +107,8 @@
 
 
 ;; Find hyphenatable pieces of a word. This is not quite synonymous with syllables.
-(define/contract (word->pieces word #:min-length [min-length 4])
-  ((word?) (#:min-length integer?) . ->* . (listof string?))  
+(define/contract (word->pieces word [min-length default-min-length])
+  ((word?) (integer?) . ->* . (listof string?))  
   
   (define (make-pieces word)
     (define word-dissected (flatten (for/list ([char word] 
@@ -117,7 +118,7 @@
                                           (cons char 'syllable))))) ; odd point denotes char + syllable
     (map list->string (splitf-at* word-dissected symbol?)))
   
-  (if (<= (len word) min-length)
+  (if (< (len word) min-length)
       (list word)  
       (make-pieces word)))
 
@@ -126,27 +127,35 @@
 ;; Hyphenate using a filter procedure.
 ;; Theoretically possible to do this externally,
 ;; but it would just mean doing the regexp-replace twice.
-(define/contract (hyphenatef text proc [joiner default-joiner] #:exceptions [extra-exceptions '()])
-  ((string? procedure?) (char? #:exceptions (listof word?)) . ->* . string?)
+(define/contract (hyphenatef text proc [joiner default-joiner] #:exceptions [extra-exceptions '()]  #:min-length [min-length default-min-length])
+  ((string? procedure?) ((or/c char? string?) #:exceptions (listof word?) #:min-length (or/c integer? false?)) . ->* . string?)
   
   ;; set up module data
   (set! exceptions (list->exceptions (append default-exceptions (map ->string extra-exceptions))))
   (when (not pattern-tree) (set! pattern-tree (make-pattern-tree default-patterns)))
   
-  (regexp-replace* #px"\\w+" text (λ(word) (if (proc word) (string-join (word->pieces word) (->string joiner)) word))))
+  (regexp-replace* #px"\\w+" text (λ(word) (if (proc word) (string-join (word->pieces word min-length) (->string joiner)) word))))
 
 
 ;; Default hyphenate function.
-(define/contract (hyphenate text [joiner default-joiner]  #:exceptions [extra-exceptions '()])
-  ((string?) (char? #:exceptions (listof word?)) . ->* . string?) 
-  (hyphenatef text (λ(x) #t) joiner #:exceptions extra-exceptions))
+(define/contract (hyphenate text [joiner default-joiner]  #:exceptions [extra-exceptions '()] #:min-length [min-length default-min-length])
+  ((string?) ((or/c char? string?) #:exceptions (listof word?) #:min-length (or/c integer? false?)) . ->* . string?) 
+  (hyphenatef text (λ(x) #t) joiner #:exceptions extra-exceptions #:min-length min-length))
 
+(define/contract (unhyphenate text [joiner default-joiner])
+  ((string?) ((or/c char? string?)) . ->* . string?) 
+  (string-replace text (->string joiner) ""))
 
 
 (module+ test
   (check-equal? (hyphenate "polymorphism") "poly\u00ADmor\u00ADphism")
+  (check-equal? (hyphenate "polymorphism" #:min-length 100) "polymorphism")
+  (check-equal? (hyphenate "ugly" #:min-length 1) "ug\u00ADly")
+  (check-equal? (unhyphenate "poly\u00ADmor\u00ADphism") "polymorphism")
   (check-equal? (hyphenatef "polymorphism" (λ(x) #f)) "polymorphism")
   (check-equal? (hyphenate "polymorphism" #\-) "poly-mor-phism")
+  (check-equal? (hyphenate "polymorphism" "foo") "polyfoomorfoophism")
+    (check-equal? (unhyphenate "polyfoomorfoophism" "foo") "polymorphism")
   (check-equal? (hyphenate "polymorphism" #\* #:exceptions '("polymo-rphism")) "polymo*rphism")
   
   (check-equal? (hyphenate "circular polymorphism squandering") "cir\u00ADcu\u00ADlar poly\u00ADmor\u00ADphism squan\u00ADder\u00ADing")
