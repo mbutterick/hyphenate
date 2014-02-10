@@ -20,6 +20,8 @@
 (define exceptions #f)
 (define pattern-tree #f)
 (define default-min-length 5)
+(define default-joiner (integer->char #x00AD))
+
 
 ;; Convert the hyphenated pattern into a point array for use later.
 (define/contract (list->exceptions exn-strings) 
@@ -108,7 +110,7 @@
 
 ;; Find hyphenatable pieces of a word. This is not quite synonymous with syllables.
 (define/contract (word->pieces word [min-length default-min-length])
-  ((word?) (integer?) . ->* . (listof string?))  
+  ((word?) ((or/c integer? false?)) . ->* . (listof string?))  
   
   (define (make-pieces word)
     (define word-dissected (flatten (for/list ([char word] 
@@ -118,11 +120,10 @@
                                           (cons char 'syllable))))) ; odd point denotes char + syllable
     (map list->string (splitf-at* word-dissected symbol?)))
   
-  (if (< (len word) min-length)
+  (if (and min-length (< (len word) min-length))
       (list word)  
       (make-pieces word)))
 
-(define default-joiner (integer->char #x00AD))
 
 ;; Hyphenate using a filter procedure.
 ;; Theoretically possible to do this externally,
