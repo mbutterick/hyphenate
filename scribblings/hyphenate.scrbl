@@ -8,11 +8,18 @@
 
 @title{Hyphenate}
 
-@author{Matthew Butterick (mb@"@"mbtype.com)}
+@author[(author+email "Matthew Butterick" "mb@mbtype.com")]
 
-A simple hyphenation engine that uses the Knuth–Liang hyphenation algorithm originally developed for TeX. This implementation is a port of Ned Batchelder's @link["http://nedbatchelder.com/code/modules/hyphenate.html"]{Python version}. I can claim only the most inconsequential shred of authorial credit.
+A simple hyphenation engine that uses the Knuth–Liang hyphenation algorithm originally developed for TeX. This implementation is a port of Ned Batchelder's @link["http://nedbatchelder.com/code/modules/hyphenate.html"]{Python version}. I have added little to their work. Accordingly, I take little credit.
 
-I originally developed this module to handle hyphenation for my web-based book @link["http://practicaltypography.com"]{Butterick's Practical Typography}. Among web browsers, support for CSS-based hyphenation is still iffy, but soft hyphens work reliably well. Putting them into the text manually, however, is a drag. Hence @racketmodname[hyphenate].
+I originally put together this module to handle hyphenation for my web-based book @link["http://practicaltypography.com"]{Butterick's Practical Typography} (which I made with @tech{Racket} & @tech{Scribble}). Though support for CSS-based hyphenation in web browsers is @link["http://caniuse.com/#search=hyphen"]{still iffy}, soft hyphens work reliably well. But putting them into the text manually is a drag. And thus a module was born.
+
+@section{Installation}
+
+At the command line:
+@verbatim{raco pkg install hyphenate}
+
+@section{Interface}
 
 @defmodule[hyphenate]
 
@@ -43,7 +50,7 @@ Because the hyphenation is based on an algorithm rather than a dictionary, it ma
      (hyphenate "supercalifragilisticexpialidocious" #\-)
    ]
 
-Using the @racket[#:exceptions] keyword, you can pass hyphenation exceptions as a list of words with permissible hyphenation points marked with regular hyphen characters (@racket["-"]). If an exception word contains no hyphens, that word will never be hyphenated.
+Using the @racket[#:exceptions] keyword, you can pass hyphenation exceptions as a list of words with hyphenation points marked with regular hyphens (@racket["-"]). If an exception word contains no hyphens, that word will never be hyphenated.
 
 @examples[#:eval my-eval
      (hyphenate "polymorphic" #\-)
@@ -59,7 +66,7 @@ Knuth & Liang were sufficiently confident about their algorithm that they origin
      #:exceptions '("col-umns" "sign-age" "law-yers")) 
    ]
 
-Overall, my impression is that the Knuth–Liang algorithm tends to miss legitimate hyphenation points (i.e., it generates false negatives) more often than it creates erroneous hyphenation points (i.e., false positives). This is good policy. Perfect hyphenation — that is, hyphenation that represents an exact linguistic syllabification of each word — is hardly useful in typesetting contexts. Hyphenation simply seeks to mark possible line-break and page-break locations for whatever text-layout engine is drawing the text. A word wrongly hyphenated is more likely noticed by a reader than a word inefficiently hyphenated.
+Overall, my impression is that the Knuth–Liang algorithm is more likely to miss legitimate hyphenation points (i.e., generate false negatives) than create erroneous hyphenation points (i.e., false positives). This is good policy. Perfect hyphenation — that is, hyphenation that represents an exact linguistic syllabification of each word — is hardly useful in typesetting contexts. Hyphenation simply seeks to mark possible line-break and page-break locations for whatever layout engine is drawing the text. The ultimate goal is to permit more even text flow. Like horseshoes and hand grenades, close is good enough. And a word wrongly hyphenated is more likely noticed by a reader than a word inefficiently hyphenated.
 
 For this reason, certain words can't be hyphenated algorithmically, because the correct hyphenation depends on meaning, not merely on spelling. For instance:
 
@@ -70,13 +77,13 @@ For this reason, certain words can't be hyphenated algorithmically, because the 
 This is the right result. If you used @italic{adder} to mean the machine, it would be hyphenated @italic{add-er}; if you meant the snake, it would be @italic{ad-der}. Better to avoid hyphenation than to hyphenate incorrectly.
 
 
-Don't send raw HTML through @racket[hyphenate]. It can't distinguish HTML tags and attributes from textual content, so it will hyphenate everything, breaking your markup.
+Don't send raw HTML through @racket[hyphenate]. It can't distinguish HTML tags and attributes from textual content, so it will hyphenate everything, which will goof up your file.
 
 @examples[#:eval my-eval
      (hyphenate "<body style=\"background: yellow\">Hello world</body>") 
    ]
    
-So pass your textual content through @racket[hyphenate] @italic{before} you put it into your HTML template. Or convert your HTML to an @tech{X-expression} and process it selectively (e.g., with @racket[match]).
+Instead, send your textual content through @racket[hyphenate] @italic{before} you put it into your HTML template. Or convert your HTML to an @tech{X-expression} and process it selectively (e.g., with @racket[match]).
 
 @defproc[
 (hyphenatef
@@ -95,6 +102,8 @@ Like @racket[hyphenate], but only words matching @racket[_pred] are hyphenated. 
      (hyphenatef "Brennan Huff likes fancy sauce" uncapitalized?
       #\-) 
    ]
+   
+It's possible to do fancier kinds of hyphenation restrictions that take account of context, like not hyphenating the last word of a paragraph. But @racket[hyphenatef] only operates on words. So you'll have to write some fancier code. Separate out the hyphenatable words, and then send them through good old @racket[hyphenate].
 
 @defproc[
 (unhyphenate
@@ -110,9 +119,17 @@ A side effect of using @racket[hyphenate] is that soft hyphens (or whatever the 
      (unhyphenate (hyphenate "ribbon-cutting ceremony"))
      ]
 
-Keep in mind that @racket[unhyphenate] won't produce the input originally passed to @racket[hyphenate] if @racket[_joiner] appeared in the original input.
+Use this function cautiously — if @racket[_joiner] appeared in the original input to @racket[hyphenate], the output from @racket[unhyphenate] won't be the same string.
 
 @examples[#:eval my-eval
      (hyphenate "ribbon-cutting ceremony" #\-) 
      (unhyphenate (hyphenate "ribbon-cutting ceremony" #\-) #\-)
    ]
+
+
+@section{License & source code}
+
+This module is licensed under the LGPL.
+
+Source repository at @link["http://github.com/mbutterick/hyphenate"]{http://github.com/mbutterick/hyphenate}.
+
