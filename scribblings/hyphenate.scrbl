@@ -14,10 +14,14 @@ A simple hyphenation engine that uses the Knuth–Liang hyphenation algorithm or
 
 I originally put together this module to handle hyphenation for my web-based book @link["http://practicaltypography.com"]{Butterick's Practical Typography} (which I made with @tech{Racket} & @tech{Scribble}). Though support for CSS-based hyphenation in web browsers is @link["http://caniuse.com/#search=hyphen"]{still iffy}, soft hyphens work reliably well. But putting them into the text manually is a drag. And thus a module was born.
 
-@section{Installation}
+@section{Installation & updates}
 
 At the command line:
 @verbatim{raco pkg install hyphenate}
+
+After that, you can update the package from the command line:
+@verbatim{raco pkg update hyphenate}
+
 
 @section{Interface}
 
