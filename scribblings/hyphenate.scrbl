@@ -17,7 +17,7 @@ I originally put together this module to handle hyphenation for my web-based boo
 @section{Installation & updates}
 
 At the command line:
-@verbatim{raco pkg install hyphenate}
+@verbatim{raco pkg install git://github.com/mbutterick/hyphenate}
 
 After that, you can update the package from the command line:
 @verbatim{raco pkg update hyphenate}
