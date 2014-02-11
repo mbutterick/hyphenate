@@ -12,7 +12,7 @@
 
 A simple hyphenation engine that uses the Knuth–Liang hyphenation algorithm originally developed for TeX. This implementation is a port of Ned Batchelder's @link["http://nedbatchelder.com/code/modules/hyphenate.html"]{Python version}. I have added little to their work. Accordingly, I take little credit.
 
-I originally put together this module to handle hyphenation for my web-based book @link["http://practicaltypography.com"]{Butterick's Practical Typography} (which I made with @tech{Racket} & @tech{Scribble}). Though support for CSS-based hyphenation in web browsers is @link["http://caniuse.com/#search=hyphen"]{still iffy}, soft hyphens work reliably well. But putting them into the text manually is a drag. And thus a module was born.
+I originally put together this module to handle hyphenation for my web-based book @link["http://practicaltypography.com"]{Butterick's Practical Typography} (which I made with Racket & Scribble). Though support for CSS-based hyphenation in web browsers is @link["http://caniuse.com/#search=hyphen"]{still iffy}, soft hyphens work reliably well. But putting them into the text manually is a drag. And thus a module was born.
 
 @section{Installation & updates}
 
@@ -87,7 +87,7 @@ Don't send raw HTML through @racket[hyphenate]. It can't distinguish HTML tags a
      (hyphenate "<body style=\"background: yellow\">Hello world</body>") 
    ]
    
-Instead, send your textual content through @racket[hyphenate] @italic{before} you put it into your HTML template. Or convert your HTML to an @tech{X-expression} and process it selectively (e.g., with @racket[match]).
+Instead, send your textual content through @racket[hyphenate] @italic{before} you put it into your HTML template. Or convert your HTML to an X-expression and process it selectively (e.g., with @racket[match]).
 
 @defproc[
 (hyphenatef
