@@ -62,7 +62,7 @@ Using the @racket[#:exceptions] keyword, you can pass hyphenation exceptions as 
      (hyphenate "polymorphic" #\- #:exceptions '("polymorphic"))
    ]
 
-Knuth & Liang were sufficiently confident about their algorithm that they originally released it with only 14 exceptions: @italic{associate[s], declination, obligatory, philanthropic, present[s], project[s], reciprocity, recognizance, reformation, retribution}, and @italic{table}. Admirable bravado, but it's not hard to discover others.
+Knuth & Liang were sufficiently confident about their algorithm that they originally released it with only 14 exceptions: @italic{associate[s], declination, obligatory, philanthropic, present[s], project[s], reciprocity, recognizance, reformation, retribution}, and @italic{table}. Admirable bravado, but it's not hard to discover others that need adjustment.
 
 @examples[#:eval my-eval
      (hyphenate "wrong: columns signage lawyers" #\-) 
@@ -70,7 +70,7 @@ Knuth & Liang were sufficiently confident about their algorithm that they origin
      #:exceptions '("col-umns" "sign-age" "law-yers")) 
    ]
 
-Overall, my impression is that the Knuth–Liang algorithm is more likely to miss legitimate hyphenation points (i.e., generate false negatives) than create erroneous hyphenation points (i.e., false positives). This is good policy. Perfect hyphenation — that is, hyphenation that represents an exact linguistic syllabification of each word — is hardly useful in typesetting contexts. Hyphenation simply seeks to mark possible line-break and page-break locations for whatever layout engine is drawing the text. The ultimate goal is to permit more even text flow. Like horseshoes and hand grenades, close is good enough. And a word wrongly hyphenated is more likely noticed by a reader than a word inefficiently hyphenated.
+Overall, my impression is that the Knuth–Liang algorithm is more likely to miss legitimate hyphenation points (i.e., generate false negatives) than create erroneous hyphenation points (i.e., false positives). This is good policy. Perfect hyphenation — that is, hyphenation that represents an exact linguistic syllabification of each word — is superfluous for typesetting. Hyphenation simply seeks to mark possible line-break and page-break locations for whatever layout engine is drawing the text. The ultimate goal is to permit more even text flow. Like horseshoes and hand grenades, close is good enough. And a word wrongly hyphenated is more likely to be noticed by a reader than a word inefficiently hyphenated.
 
 For this reason, certain words can't be hyphenated algorithmically, because the correct hyphenation depends on meaning, not merely on spelling. For instance:
 
