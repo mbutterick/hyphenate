@@ -135,5 +135,5 @@ Use this function cautiously — if @racket[_joiner] appeared in the original in
 
 This module is licensed under the LGPL.
 
-Source repository at @link["http://github.com/mbutterick/hyphenate"]{http://github.com/mbutterick/hyphenate}.
+Source repository at @link["http://github.com/mbutterick/hyphenate"]{http://github.com/mbutterick/hyphenate}. Suggestions & corrections welcome.
 
