@@ -12,7 +12,7 @@
 
 A simple hyphenation engine that uses the Knuth–Liang hyphenation algorithm originally developed for TeX. This implementation is a port of Ned Batchelder's @link["http://nedbatchelder.com/code/modules/hyphenate.html"]{Python version}. I have added little to their work. Accordingly, I take little credit.
 
-I originally put together this module to handle hyphenation for my web-based book @link["http://practicaltypography.com"]{Butterick's Practical Typography} (which I made with Racket & Scribble). Though support for CSS-based hyphenation in web browsers is @link["http://caniuse.com/#search=hyphen"]{still iffy}, soft hyphens work reliably well. But putting them into the text manually is a drag. And thus a module was born.
+I originally put together this module to handle hyphenation for my web-based book @link["http://practicaltypography.com"]{Butterick's Practical Typography} (which I made with Racket & Scribble). Though support for CSS-based hyphenation in web browsers is @link["http://caniuse.com/#search=hyphen"]{still iffy}, soft hyphens work reliably well. But putting them into the text manually is a drag. Thus a module was born.
 
 @section{Installation & updates}
 
@@ -128,6 +128,14 @@ Use this function cautiously — if @racket[_joiner] appeared in the original in
 @examples[#:eval my-eval
      (hyphenate "ribbon-cutting ceremony" #\-) 
      (unhyphenate (hyphenate "ribbon-cutting ceremony" #\-) #\-)
+    ]
+    
+Certain word processors allow users to @link["http://practicaltypography.com/optional-hyphens.html"]{put soft hyphens} in their text. So consider whether it's possible that soft hyphens could appear in your input string.
+
+@examples[#:eval my-eval
+     (hyphenate "True\x00ADType typefaces")
+     (unhyphenate (hyphenate "True\x00ADType typefaces"))
+     (hyphenate (unhyphenate "True\x00ADType typefaces") #\-)
    ]
 
 
