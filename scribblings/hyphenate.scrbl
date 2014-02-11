@@ -130,12 +130,12 @@ Use this function cautiously — if @racket[_joiner] appeared in the original in
      (unhyphenate (hyphenate "ribbon-cutting ceremony" #\-) #\-)
     ]
     
-Certain word processors allow users to @link["http://practicaltypography.com/optional-hyphens.html"]{put soft hyphens} in their text. So consider whether it's possible that soft hyphens could appear in your input string.
+It's also possible that soft hyphens could appear in your input string. Certain word processors allow users to @link["http://practicaltypography.com/optional-hyphens.html"]{insert soft hyphens} in their text.
 
 @examples[#:eval my-eval
-     (hyphenate "True\x00ADType typefaces")
-     (unhyphenate (hyphenate "True\x00ADType typefaces"))
-     (hyphenate (unhyphenate "True\x00ADType typefaces") #\-)
+     (hyphenate "True\u00ADType typefaces")
+     (unhyphenate (hyphenate "True\u00ADType typefaces"))
+     (hyphenate (unhyphenate "True\u00ADType typefaces") #\-)
    ]
 
 
