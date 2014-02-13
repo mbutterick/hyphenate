@@ -103,8 +103,7 @@ Like @racket[hyphenate], but only words matching @racket[_pred] are hyphenated. 
      (hyphenate "Brennan Huff likes fancy sauce" #\-) 
      (define uncapitalized? (λ(word) (let ([letter (substring word 0 1)])
  (equal? letter (string-downcase letter)))))
-     (hyphenatef "Brennan Huff likes fancy sauce" uncapitalized?
-      #\-) 
+     (hyphenatef "Brennan Huff likes fancy sauce" uncapitalized? #\-) 
    ]
    
 Sometimes you need @racket[hyphenatef] to prevent unintended consequences. For instance, if you're using ligatures in CSS, certain groups of characters (fi, fl, ffi, et al.) will be replaced by a single glyph. That looks snazzy, but adding soft hyphens between any of these pairs will defeat the ligature substitution, creating inconsistent results. With @racket[hyphenatef], you can skip these words:
