@@ -1,11 +1,11 @@
 #lang racket/base
 (require racket/string racket/list racket/contract racket/vector racket/bool)
-(require "data.rkt" "readability.rkt")
+(require "hyphenation-patterns.rkt")
 
 (module+ test (require rackunit))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Hyphenate.rkt
+;;; Hyphenate module
 ;;; Racket port of Ned Batchelder's hyphenate.py
 ;;; http://nedbatchelder.com/code/modules/hyphenate.html
 ;;; (in the public domain)
@@ -16,13 +16,13 @@
 
 (provide (contract-out 
           [hyphenate 
-          ((string?) ((or/c char? string?) #:exceptions (listof word?) #:min-length (or/c integer? false?)) . ->* . string?)])
+           ((string?) ((or/c char? string?) #:exceptions (listof word?) #:min-length (or/c integer? false?)) . ->* . string?)])
          (contract-out 
           [hyphenatef
-          ((string? procedure?) ((or/c char? string?) #:exceptions (listof word?) #:min-length (or/c integer? false?)) . ->* . string?)])
+           ((string? procedure?) ((or/c char? string?) #:exceptions (listof word?) #:min-length (or/c integer? false?)) . ->* . string?)])
          (contract-out 
           [unhyphenate 
-          ((string?) ((or/c char? string?)) . ->* . string?)]))
+           ((string?) ((or/c char? string?)) . ->* . string?)]))
 
 ;; global data, define now but set! them later (because they're potentially big & slow)
 (define exceptions #f)
@@ -46,7 +46,7 @@
 
 ;; A word is a string without whitespace.
 (define (word? x)
-  (->boolean (regexp-match #px"^\\S+$" x)))
+  (if (regexp-match #px"^\\S+$" x) #t #f))
 
 (module+ test
   (check-true (word? "Foobar"))
@@ -69,7 +69,7 @@
   (define (insert-pattern pat)
     (let* ([chars (regexp-replace* #px"[0-9]" pat "")]
            ;; regexp returns list of strings
-           [points (map (λ(x) (if (> (len x) 0) (string->number x) 0)) (regexp-split #px"[.a-z]" pat))]
+           [points (map (λ(x) (if (> (string-length x) 0) (string->number x) 0)) (regexp-split #px"[.a-z]" pat))]
            [tree tree])
       (for ([char chars])
         (when (not (hash-has-key? tree char))
@@ -87,23 +87,23 @@
     ; controls hyphenation zone from edges of word
     ; todo: parameterize this setting
     ; todo: does this count end-of-word punctuation? it shouldn't.
-    (map (λ(i) (vector-set! points i 0)) (list 1 2 (- (len points) 2) (- (len points) 3)))
+    (map (λ(i) (vector-set! points i 0)) (list 1 2 (- (vector-length points) 2) (- (vector-length points) 3)))
     points)
   
   (let* ([word (string-downcase word)]
          [points 
           (if (hash-has-key? exceptions word)
               (hash-ref exceptions word)
-              (let* ([work (string-append "." (->string word) ".")]
-                     [points (make-vector (add1 (len work)) 0)]) 
-                (for ([i (len work)])
+              (let* ([work (string-append "." word ".")]
+                     [points (make-vector (add1 (string-length work)) 0)]) 
+                (for ([i (string-length work)])
                   (let ([tree pattern-tree])
-                    (for ([char (substring work i (len work))]
+                    (for ([char (substring work i (string-length work))]
                           #:break (not (hash-has-key? tree char)))
                       (set! tree (hash-ref tree char))
                       (when (hash-has-key? tree empty)
                         (let ([point (hash-ref tree empty)])
-                          (for ([j (len point)])
+                          (for ([j (length point)])
                             (vector-set! points (+ i j) (max (vector-ref points (+ i j)) (list-ref point j)))))))))
                 points))])
     
@@ -111,6 +111,28 @@
     ; todo: dropping first 2 elements is needed for mysterious reasons to be documented later
     (vector-drop (make-zeroes points) 2)))
 
+
+;; helpful extension of splitf-at
+(define (splitf-at* xs split-test)
+  
+  (define (trim items test-proc)
+    (dropf-right (dropf items test-proc) test-proc))
+  
+  (define (&splitf-at* xs [acc '()])
+    (if (empty? xs) 
+        ;; reverse because accumulation is happening backward 
+        ;; (because I'm using cons to push latest match onto front of list)
+        (reverse acc)
+        (let-values ([(item rest) 
+                      ;; drop matching elements from front
+                      ;; then split on nonmatching 
+                      ;; = nonmatching item + other elements (which will start with matching)
+                      (splitf-at (dropf xs split-test) (compose1 not split-test))])
+          ;; recurse, and store new item in accumulator
+          (&splitf-at* rest (cons item acc)))))
+  
+  ;; trim off elements matching split-test
+  (&splitf-at* (trim xs split-test)))
 
 
 ;; Find hyphenatable pieces of a word. This is not quite synonymous with syllables.
@@ -124,10 +146,14 @@
                                           (cons char 'syllable))))) ; odd point denotes char + syllable
     (map list->string (splitf-at* word-dissected symbol?)))
   
-  (if (and min-length (< (len word) min-length))
+  (if (and min-length (< (string-length word) min-length))
       (list word)  
       (make-pieces word)))
 
+
+;; joiner contract allows char or string; this coerces to string.
+(define (joiner->string joiner)
+  (if (char? joiner) (format "~a" joiner) joiner))
 
 ;; Hyphenate using a filter procedure.
 ;; Theoretically possible to do this externally,
@@ -136,18 +162,20 @@
   
   
   ;; set up module data
-  (set! exceptions (list->exceptions (append default-exceptions (map ->string extra-exceptions))))
+  (set! exceptions (list->exceptions (append default-exceptions extra-exceptions)))
   (when (not pattern-tree) (set! pattern-tree (make-pattern-tree default-patterns)))
   
-  (regexp-replace* #px"\\w+" text (λ(word) (if (proc word) (string-join (word->pieces word min-length) (->string joiner)) word))))
+  (define joiner-string (joiner->string joiner))
+  (regexp-replace* #px"\\w+" text (λ(word) (if (proc word) (string-join (word->pieces word min-length) joiner-string) word))))
 
 
 ;; Default hyphenate function.
 (define (hyphenate text [joiner default-joiner]  #:exceptions [extra-exceptions '()] #:min-length [min-length default-min-length])
   (hyphenatef text (λ(x) #t) joiner #:exceptions extra-exceptions #:min-length min-length))
 
-(define (unhyphenate text [joiner default-joiner]) 
-  (string-replace text (->string joiner) ""))
+(define (unhyphenate text [joiner default-joiner])
+  (define joiner-string (joiner->string joiner))
+  (string-replace text joiner-string ""))
 
 
 (module+ test
