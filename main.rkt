@@ -1,6 +1,6 @@
 #lang racket/base
-(require racket/string racket/list racket/contract racket/vector racket/bool)
-(require "hyphenation-patterns.rkt")
+(require racket/string racket/list racket/contract racket/vector)
+(require "patterns.rkt" "exceptions.rkt")
 
 (module+ test (require rackunit))
 
@@ -16,10 +16,10 @@
 
 (provide (contract-out 
           [hyphenate 
-           ((string?) ((or/c char? string?) #:exceptions (listof word?) #:min-length (or/c integer? false?)) . ->* . string?)])
+           ((string?) ((or/c char? string?) #:exceptions (listof exception-word?) #:min-length (or/c integer? #f)) . ->* . string?)])
          (contract-out 
           [hyphenatef
-           ((string? procedure?) ((or/c char? string?) #:exceptions (listof word?) #:min-length (or/c integer? false?)) . ->* . string?)])
+           ((string? procedure?) ((or/c char? string?) #:exceptions (listof exception-word?) #:min-length (or/c integer? #f)) . ->* . string?)])
          (contract-out 
           [unhyphenate 
            ((string?) ((or/c char? string?)) . ->* . string?)]))
@@ -44,15 +44,16 @@
 
 
 
-;; A word is a string without whitespace.
-(define (word? x)
-  (if (regexp-match #px"^\\S+$" x) #t #f))
+;; An exception-word is a string of word characters or hyphens.
+(define (exception-word? x)
+  (if (regexp-match #px"^[\\w-]+$" x) #t #f))
 
 (module+ test
-  (check-true (word? "Foobar"))
-  (check-true (word? "foobar"))
-  (check-true (word? "foo-bar"))
-  (check-false (word? "foo bar")))
+  (check-true (exception-word? "Foobar"))
+  (check-true (exception-word? "foobar"))
+  (check-false (exception-word? "foobar!"))
+  (check-true (exception-word? "foo-bar"))
+  (check-false (exception-word? "foo bar")))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Helper functions
@@ -67,6 +68,7 @@
   ;; another level down in the tree, and leaf nodes have the list of
   ;; points.
   (define (insert-pattern pat)
+    ;; todo?: filter other characters out of input string?
     (let* ([chars (regexp-replace* #px"[0-9]" pat "")]
            ;; regexp returns list of strings
            [points (map (λ(x) (if (> (string-length x) 0) (string->number x) 0)) (regexp-split #px"[.a-z]" pat))]
@@ -85,8 +87,7 @@
   
   (define (make-zeroes points)
     ; controls hyphenation zone from edges of word
-    ; todo: parameterize this setting
-    ; todo: does this count end-of-word punctuation? it shouldn't.
+    ; possible todo: make this user-configurable?
     (map (λ(i) (vector-set! points i 0)) (list 1 2 (- (vector-length points) 2) (- (vector-length points) 3)))
     points)
   
@@ -135,8 +136,8 @@
   (&splitf-at* (trim xs split-test)))
 
 
-;; Find hyphenatable pieces of a word. This is not quite synonymous with syllables.
-(define (word->pieces word [min-length default-min-length])
+;; Find hyphenation points in a word. This is not quite synonymous with syllables.
+(define (word->hyphenation-points word [min-length default-min-length])
   
   (define (make-pieces word)
     (define word-dissected (flatten (for/list ([char word] 
@@ -162,11 +163,14 @@
   
   
   ;; set up module data
+  ;; todo?: change set! to parameterize
   (set! exceptions (list->exceptions (append default-exceptions extra-exceptions)))
   (when (not pattern-tree) (set! pattern-tree (make-pattern-tree default-patterns)))
   
   (define joiner-string (joiner->string joiner))
-  (regexp-replace* #px"\\w+" text (λ(word) (if (proc word) (string-join (word->pieces word min-length) joiner-string) word))))
+  (define word-pattern #px"\\w+") ;; more restrictive than exception-word
+  ;; todo?: connect this regexp pattern to the one used in word? predicate
+  (regexp-replace* word-pattern text (λ(word) (if (proc word) (string-join (word->hyphenation-points word min-length) joiner-string) word))))
 
 
 ;; Default hyphenate function.
@@ -174,23 +178,7 @@
   (hyphenatef text (λ(x) #t) joiner #:exceptions extra-exceptions #:min-length min-length))
 
 (define (unhyphenate text [joiner default-joiner])
-  (define joiner-string (joiner->string joiner))
-  (string-replace text joiner-string ""))
+  (string-replace text (joiner->string joiner) ""))
 
 
-(module+ test
-  (check-equal? (hyphenate "polymorphism") "poly\u00ADmor\u00ADphism")
-  (check-equal? (hyphenate "polymorphism" #:min-length 100) "polymorphism")
-  (check-equal? (hyphenate "ugly" #:min-length 1) "ug\u00ADly")
-  (check-equal? (unhyphenate "poly\u00ADmor\u00ADphism") "polymorphism")
-  (check-equal? (hyphenatef "polymorphism" (λ(x) #f)) "polymorphism")
-  (check-equal? (hyphenate "polymorphism" #\-) "poly-mor-phism")
-  (check-equal? (hyphenate "polymorphism" "foo") "polyfoomorfoophism")
-  (check-equal? (unhyphenate "polyfoomorfoophism" "foo") "polymorphism")
-  (check-equal? (hyphenate "polymorphism" #\* #:exceptions '("polymo-rphism")) "polymo*rphism")
-  
-  (check-equal? (hyphenate "circular polymorphism squandering") "cir\u00ADcu\u00ADlar poly\u00ADmor\u00ADphism squan\u00ADder\u00ADing")
-  (check-equal? (hyphenate "present project") "present project") ; exception words
-  ;; test these last so exceptions have been set up already
-  (check-equal? (word->pieces "polymorphism") '("poly" "mor" "phism"))
-  (check-equal? (word->pieces "present") '("present"))) ; exception word
+
