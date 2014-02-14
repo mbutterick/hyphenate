@@ -108,12 +108,13 @@ Like @racket[hyphenate], but only words matching @racket[_pred] are hyphenated. 
    
 Sometimes you need @racket[hyphenatef] to prevent unintended consequences. For instance, if you're using ligatures in CSS, certain groups of characters (fi, fl, ffi, et al.) will be replaced by a single glyph. That looks snazzy, but adding soft hyphens between any of these pairs will defeat the ligature substitution, creating inconsistent results. With @racket[hyphenatef], you can skip these words:
 
-@margin-note{``Wouldn't it be better to exclude certain pairs of letters rather than whole words?'' Yes. But for now, not supported.}
+@margin-note{``Wouldn't it be better to exclude certain pairs of letters rather than whole words?'' Yes. But for now, that's not supported.}
 
 @examples[#:eval my-eval
 (hyphenate "Hufflepuff golfing final on Tuesday" #\-)
 (define (no-ligs? word)
-  (not (ormap (λ(lig) (regexp-match lig word)) '("ff" "fi" "fl" "ffi" "ffl"))))
+  (not (ormap (λ(lig) (regexp-match lig word)) 
+  '("ff" "fi" "fl" "ffi" "ffl"))))
 (hyphenatef "Hufflepuff golfing final on Tuesday" no-ligs? #\-) 
 ]
  
