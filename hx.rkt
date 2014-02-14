@@ -1,7 +1,7 @@
 #lang racket/base
 (require "main.rkt")
 (require xml)
-
+(require tagged-xexpr)
 
 
 #|
@@ -20,10 +20,23 @@ The following grammar describes expressions that create X-expressions:
 
 ;; recursively hyphenate strings within xexpr
 ;; todo: add exclusion #:only [only-proc (λ(x) x)]
-(define (hyphenate-xexpr x ) 
-  (define exclusions '(style script)) ; omit these from ever being hyphenated
+(define (hx x)
+  (cond 
+    [(string? x) (hyphenate x)]
+    [(tagged-xexpr? x) x]
+    ;;
+    ;;
+    [else x] ;; catches symbols, valid-chars, and cdata
+    )
   
-  (cond
+  )
+
+
+#|
+  (define exclusions '(style script)) ; omit these from ever being hyphenated
+
+
+(cond
     ; todo: the only-proc semantics are illogical.
     ; main issue: keep it out of tags like <style> that parse as textual elements, but are not.
     ; So two choices, opt-out or opt-in.
@@ -36,4 +49,8 @@ The following grammar describes expressions that create X-expressions:
                            (map-xexpr-elements (λ(x) (if (tagged-xexpr? x) (hyphenate x) x)) x))] ; only process subxexprs
     
     [(string? x) (hyphenate-string x)]
-    [else x]))
+    [else x])
+|#
+
+;; how to make cdata:
+;;  (make-cdata #f #f "<![CDATA[foobar]]>")
