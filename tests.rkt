@@ -1,9 +1,16 @@
 #lang racket/base
-(require "main.rkt")
-
 (require rackunit)
 
+(require "main.rkt")
+
 (require/expose "main.rkt" (word->hyphenation-points))
+(require/expose "main.rkt" (exception-word?))
+
+(check-true (exception-word? "Foobar"))
+(check-true (exception-word? "foobar"))
+(check-false (exception-word? "foobar!"))
+(check-true (exception-word? "foo-bar"))
+(check-false (exception-word? "foo bar"))
 
 (check-equal? (hyphenate "polymorphism") "poly\u00ADmor\u00ADphism")
 (check-equal? (hyphenate "polymorphism" #:min-length 100) "polymorphism")
@@ -19,4 +26,3 @@
 ;; test these last so exceptions have been set up already
 (check-equal? (word->hyphenation-points "polymorphism") '("poly" "mor" "phism"))
 (check-equal? (word->hyphenation-points "present") '("present")) ; exception word
-

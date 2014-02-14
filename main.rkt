@@ -2,8 +2,6 @@
 (require racket/string racket/list racket/contract racket/vector)
 (require "patterns.rkt" "exceptions.rkt")
 
-(module+ test (require rackunit))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Hyphenate module
 ;;; Racket port of Ned Batchelder's hyphenate.py
@@ -47,13 +45,6 @@
 ;; An exception-word is a string of word characters or hyphens.
 (define (exception-word? x)
   (if (regexp-match #px"^[\\w-]+$" x) #t #f))
-
-(module+ test
-  (check-true (exception-word? "Foobar"))
-  (check-true (exception-word? "foobar"))
-  (check-false (exception-word? "foobar!"))
-  (check-true (exception-word? "foo-bar"))
-  (check-false (exception-word? "foo bar")))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Helper functions
