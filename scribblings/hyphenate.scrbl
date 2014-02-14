@@ -116,6 +116,8 @@ Sometimes you need @racket[hyphenatef] to prevent unintended consequences. For i
 (hyphenatef "Hufflepuff golfing final on Tuesday" no-ligs? #\-) 
 ]
  
+@margin-note{``Wouldn't it be better to exclude certain pairs of letters rather than whole words?'' Yes. But for now, not supported.}
+
 It's possible to do fancier kinds of hyphenation restrictions that take account of context, like not hyphenating the last word of a paragraph. But @racket[hyphenatef] only operates on words. So you'll have to write some fancier code. Separate out the words eligible for hyphenation, and then send them through good old @racket[hyphenate].
 
 @defproc[
