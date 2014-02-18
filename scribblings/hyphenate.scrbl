@@ -14,12 +14,12 @@ A simple hyphenation engine that uses the Knuth–Liang hyphenation algorithm or
 
 I originally put together this module to handle hyphenation for my web-based book @link["http://practicaltypography.com"]{Butterick's Practical Typography} (which I made with Racket & Scribble). Though support for CSS-based hyphenation in web browsers is @link["http://caniuse.com/#search=hyphen"]{still iffy}, soft hyphens work reliably well. But putting them into the text manually is a drag. Thus a module was born.
 
-@section{Installation & updates}
+@section{Installation}
 
 At the command line:
 @verbatim{raco pkg install hyphenate}
 
-After that, you can update the package from the command line:
+After that, you can update the package like so:
 @verbatim{raco pkg update hyphenate}
 
 
@@ -27,15 +27,14 @@ After that, you can update the package from the command line:
 
 @defmodule[hyphenate]
 
-
 @defproc[
 (hyphenate 
-[text string?] 
+[xexpr xexpr/c] 
 [joiner (or/c char? string?) (integer->char #x00AD)]
 [#:exceptions exceptions (listof string?) empty]
 [#:min-length length (or/c integer? false?) 5])
 string?]
-Hyphenate @racket[_text] by calculating hyphenation points and inserting @racket[_joiner] at those points. By default, @racket[_joiner] is the soft hyphen (Unicode 00AD = decimal 173). Words shorter than @racket[#:min-length] @racket[_length] will not be hyphenated. To hyphenate words of any length, use @racket[#:min-length] @racket[#f].
+Hyphenate @racket[_xexpr] by calculating hyphenation points and inserting @racket[_joiner] at those points. By default, @racket[_joiner] is the soft hyphen (Unicode 00AD = decimal 173). Words shorter than @racket[#:min-length] @racket[_length] will not be hyphenated. To hyphenate words of any length, use @racket[#:min-length] @racket[#f].
 
 @margin-note{The REPL displays a soft hyphen as \u00AD. But in ordinary use, you'll only see a soft hyphen when it appears at the end of a line or page as part of a hyphenated word. Otherwise it's not displayed. In most of the examples here, I use a standard hyphen for clarity.}
 
@@ -80,18 +79,24 @@ For this reason, certain words can't be hyphenated algorithmically, because the 
    
 This is the right result. If you used @italic{adder} to mean the machine, it would be hyphenated @italic{add-er}; if you meant the snake, it would be @italic{ad-der}. Better to avoid hyphenation than to hyphenate incorrectly.
 
-
-Don't send raw HTML through @racket[hyphenate]. It can't distinguish HTML tags and attributes from textual content, so it will hyphenate everything, which will goof up your file.
+You can send HTML-style X-expressions through @racket[hyphenate]. It will recursively hyphenate the text strings, while leaving the tags and attributes alone.
 
 @examples[#:eval my-eval
-     (hyphenate "<body style=\"background: yellow\">Hello world</body>") 
+     (hyphenate '(p "polymorphically" (em "formatted" (strong "snowmen")))) 
+   ]
+
+Don't send raw HTML through @racket[hyphenate]. It can't distinguish HTML tags and attributes from textual content, so everything will be hyphenated, thus goofing up your file. But you can easily convert HTML to an X-expression, hyphenate it, and then convert back.
+
+@examples[#:eval my-eval
+    (define html "<body style=\"background: yellow\">Hello snowman</body>")
+    (hyphenate html)
+    (xexpr->string (hyphenate (string->xexpr html))) 
    ]
    
-Instead, send your textual content through @racket[hyphenate] @italic{before} you put it into your HTML template. Or convert your HTML to an X-expression and process it selectively (e.g., with @racket[match]).
 
 @defproc[
 (hyphenatef
-[text string?] 
+[xexpr xexpr/c] 
 [pred procedure?]
 [joiner (or/c char? string?) (integer->char \#x00AD)]
 [#:exceptions exceptions (listof string?) empty]
@@ -121,10 +126,10 @@ It's possible to do fancier kinds of hyphenation restrictions that take account 
 
 @defproc[
 (unhyphenate
-[text string?] 
+[xexpr xexpr/c] 
 [joiner (or/c char? string?) @(integer->char #x00AD)])
 string?]
-Remove @racket[_joiner] from @racket[_text] using @racket[string-replace].
+Remove @racket[_joiner] from @racket[_xexpr].
 
 A side effect of using @racket[hyphenate] is that soft hyphens (or whatever the @racket[_joiner] is) will be embedded in the output text. If you need to support copying of text, for instance in a GUI application, you'll probably want to strip out the hyphenation before the copied text is moved to the clipboard.
 

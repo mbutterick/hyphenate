@@ -1,4 +1,5 @@
 #lang racket/base
+(require (for-syntax racket/base))
 (require racket/string racket/list racket/contract racket/vector)
 (require "patterns.rkt" "exceptions.rkt" tagged-xexpr xml)
 
@@ -14,15 +15,15 @@
 ;;; (also in the public domain)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(provide (contract-out 
-          [hyphenate 
-           ((xexpr?) ((or/c char? string?) #:exceptions (listof exception-word?) #:min-length (or/c integer? #f)) . ->* . string?)])
-         (contract-out 
-          [hyphenatef
-           ((xexpr? procedure?) ((or/c char? string?) #:exceptions (listof exception-word?) #:min-length (or/c integer? #f)) . ->* . string?)])
-         (contract-out 
-          [unhyphenate 
-           ((xexpr?) ((or/c char? string?)) . ->* . string?)]))
+(define-syntax (define+provide/contract stx)
+  (syntax-case stx ()
+    [(_ (proc arg ... . rest-arg) contract body ...)
+     #'(define+provide/contract proc contract
+         (λ(arg ... . rest-arg) body ...))]
+    [(_ name contract body ...)
+     #'(begin
+         (provide (contract-out [name contract]))
+         (define name body ...))]))
 
 ;; global data, define now but set! them later (because they're potentially big & slow)
 (define exceptions #f)
@@ -157,10 +158,12 @@
   (if (char? joiner) (format "~a" joiner) joiner))
 
 ;; Hyphenate using a filter procedure.
-;; Theoretically possible to do this externally,
-;; but it would just mean doing the regexp-replace twice.
-(define (hyphenatef x proc [joiner default-joiner] #:exceptions [extra-exceptions '()]  #:min-length [min-length default-min-length])
-  
+(define+provide/contract (hyphenatef x proc [joiner default-joiner] 
+                                     #:exceptions [extra-exceptions '()]  
+                                     #:min-length [min-length default-min-length])
+  ((xexpr? procedure?) ((or/c char? string?) 
+                        #:exceptions (listof exception-word?) 
+                        #:min-length (or/c integer? #f)) . ->* . string?)
   
   ;; set up module data
   ;; todo?: change set! to parameterize
@@ -181,10 +184,17 @@
 
 
 ;; Default hyphenate function.
-(define (hyphenate x [joiner default-joiner]  #:exceptions [extra-exceptions '()] #:min-length [min-length default-min-length])
+(define+provide/contract (hyphenate x [joiner default-joiner]  
+                                    #:exceptions [extra-exceptions '()] 
+                                    #:min-length [min-length default-min-length])
+  ((xexpr/c) ((or/c char? string?) 
+             #:exceptions (listof exception-word?) 
+             #:min-length (or/c integer? #f)) . ->* . string?)
   (hyphenatef x (λ(x) #t) joiner #:exceptions extra-exceptions #:min-length min-length))
 
-(define (unhyphenate x [joiner default-joiner])
+(define+provide/contract (unhyphenate x [joiner default-joiner])
+  ((xexpr/c) ((or/c char? string?)) . ->* . string?)
+  
   (define (remove-hyphens text)
     (string-replace text (joiner->string joiner) ""))
   
