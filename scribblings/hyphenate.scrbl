@@ -3,7 +3,7 @@
 @(require scribble/eval (for-label racket "../main.rkt"))
 
 @(define my-eval (make-base-eval))
-@(my-eval `(require hyphenate))
+@(my-eval `(require hyphenate xml))
 
 
 @title{Hyphenate}
