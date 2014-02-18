@@ -1,6 +1,6 @@
 #lang racket/base
 (require racket/string racket/list racket/contract racket/vector)
-(require "patterns.rkt" "exceptions.rkt")
+(require "patterns.rkt" "exceptions.rkt" tagged-xexpr xml)
 
 (module+ test (require rackunit))
 
@@ -16,13 +16,13 @@
 
 (provide (contract-out 
           [hyphenate 
-           ((string?) ((or/c char? string?) #:exceptions (listof exception-word?) #:min-length (or/c integer? #f)) . ->* . string?)])
+           ((xexpr?) ((or/c char? string?) #:exceptions (listof exception-word?) #:min-length (or/c integer? #f)) . ->* . string?)])
          (contract-out 
           [hyphenatef
-           ((string? procedure?) ((or/c char? string?) #:exceptions (listof exception-word?) #:min-length (or/c integer? #f)) . ->* . string?)])
+           ((xexpr? procedure?) ((or/c char? string?) #:exceptions (listof exception-word?) #:min-length (or/c integer? #f)) . ->* . string?)])
          (contract-out 
           [unhyphenate 
-           ((string?) ((or/c char? string?)) . ->* . string?)]))
+           ((xexpr?) ((or/c char? string?)) . ->* . string?)]))
 
 ;; global data, define now but set! them later (because they're potentially big & slow)
 (define exceptions #f)
@@ -159,7 +159,7 @@
 ;; Hyphenate using a filter procedure.
 ;; Theoretically possible to do this externally,
 ;; but it would just mean doing the regexp-replace twice.
-(define (hyphenatef text proc [joiner default-joiner] #:exceptions [extra-exceptions '()]  #:min-length [min-length default-min-length])
+(define (hyphenatef x proc [joiner default-joiner] #:exceptions [extra-exceptions '()]  #:min-length [min-length default-min-length])
   
   
   ;; set up module data
@@ -170,15 +170,30 @@
   (define joiner-string (joiner->string joiner))
   (define word-pattern #px"\\w+") ;; more restrictive than exception-word
   ;; todo?: connect this regexp pattern to the one used in word? predicate
-  (regexp-replace* word-pattern text (λ(word) (if (proc word) (string-join (word->hyphenation-points word min-length) joiner-string) word))))
+  (define (insert-hyphens text)
+    (regexp-replace* word-pattern text (λ(word) (if (proc word) (string-join (word->hyphenation-points word min-length) joiner-string) word))))
+  
+  (let &hyphenate ([x x])
+    (cond
+      [(string? x) (insert-hyphens x)]
+      [(tagged-xexpr? x) (map-elements &hyphenate x)]
+      [else x])))
 
 
 ;; Default hyphenate function.
-(define (hyphenate text [joiner default-joiner]  #:exceptions [extra-exceptions '()] #:min-length [min-length default-min-length])
-  (hyphenatef text (λ(x) #t) joiner #:exceptions extra-exceptions #:min-length min-length))
+(define (hyphenate x [joiner default-joiner]  #:exceptions [extra-exceptions '()] #:min-length [min-length default-min-length])
+  (hyphenatef x (λ(x) #t) joiner #:exceptions extra-exceptions #:min-length min-length))
 
-(define (unhyphenate text [joiner default-joiner])
-  (string-replace text (joiner->string joiner) ""))
-
-
-
+(define (unhyphenate x [joiner default-joiner])
+  (define (remove-hyphens text)
+    (string-replace text (joiner->string joiner) ""))
+  
+  (let &unhyphenate ([x x])
+    (cond
+      [(string? x) (remove-hyphens x)]
+      [(tagged-xexpr? x) (map-elements &unhyphenate x)]
+      [else x])))
+  
+  
+  
+  
