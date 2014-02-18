@@ -163,7 +163,7 @@
                                      #:min-length [min-length default-min-length])
   ((xexpr? procedure?) ((or/c char? string?) 
                         #:exceptions (listof exception-word?) 
-                        #:min-length (or/c integer? #f)) . ->* . string?)
+                        #:min-length (or/c integer? #f)) . ->* . xexpr/c)
   
   ;; set up module data
   ;; todo?: change set! to parameterize
@@ -183,17 +183,20 @@
       [else x])))
 
 
+
 ;; Default hyphenate function.
 (define+provide/contract (hyphenate x [joiner default-joiner]  
                                     #:exceptions [extra-exceptions '()] 
                                     #:min-length [min-length default-min-length])
   ((xexpr/c) ((or/c char? string?) 
              #:exceptions (listof exception-word?) 
-             #:min-length (or/c integer? #f)) . ->* . string?)
+             #:min-length (or/c integer? #f)) . ->* . xexpr/c)
   (hyphenatef x (λ(x) #t) joiner #:exceptions extra-exceptions #:min-length min-length))
 
+
+
 (define+provide/contract (unhyphenate x [joiner default-joiner])
-  ((xexpr/c) ((or/c char? string?)) . ->* . string?)
+  ((xexpr/c) ((or/c char? string?)) . ->* . xexpr/c)
   
   (define (remove-hyphens text)
     (string-replace text (joiner->string joiner) ""))

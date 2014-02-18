@@ -33,7 +33,7 @@ After that, you can update the package like so:
 [joiner (or/c char? string?) (integer->char #x00AD)]
 [#:exceptions exceptions (listof string?) empty]
 [#:min-length length (or/c integer? false?) 5])
-string?]
+xexpr/c]
 Hyphenate @racket[_xexpr] by calculating hyphenation points and inserting @racket[_joiner] at those points. By default, @racket[_joiner] is the soft hyphen (Unicode 00AD = decimal 173). Words shorter than @racket[#:min-length] @racket[_length] will not be hyphenated. To hyphenate words of any length, use @racket[#:min-length] @racket[#f].
 
 @margin-note{The REPL displays a soft hyphen as \u00AD. But in ordinary use, you'll only see a soft hyphen when it appears at the end of a line or page as part of a hyphenated word. Otherwise it's not displayed. In most of the examples here, I use a standard hyphen for clarity.}
@@ -101,7 +101,7 @@ Don't send raw HTML through @racket[hyphenate]. It can't distinguish HTML tags a
 [joiner (or/c char? string?) (integer->char \#x00AD)]
 [#:exceptions exceptions (listof string?) empty]
 [#:min-length length (or/c integer? false?) 5])
-string?]
+xexpr/c]
 Like @racket[hyphenate], but only words matching @racket[_pred] are hyphenated. Convenient if you want to prevent hyphenation of certain sets of words, like proper names:
 
 @examples[#:eval my-eval
@@ -128,7 +128,7 @@ It's possible to do fancier kinds of hyphenation restrictions that take account 
 (unhyphenate
 [xexpr xexpr/c] 
 [joiner (or/c char? string?) @(integer->char #x00AD)])
-string?]
+xexpr/c]
 Remove @racket[_joiner] from @racket[_xexpr].
 
 A side effect of using @racket[hyphenate] is that soft hyphens (or whatever the @racket[_joiner] is) will be embedded in the output text. If you need to support copying of text, for instance in a GUI application, you'll probably want to strip out the hyphenation before the copied text is moved to the clipboard.
