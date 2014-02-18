@@ -1,6 +1,6 @@
 #lang scribble/manual
 
-@(require scribble/eval (for-label racket "../main.rkt"))
+@(require scribble/eval (for-label racket "../main.rkt" xml))
 
 @(define my-eval (make-base-eval))
 @(my-eval `(require hyphenate xml))
