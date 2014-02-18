@@ -17,3 +17,4 @@ And enjoy:
     
     > "Hy-phen-ation al-go-rithm"
     
+Full docs are installed with the package.
