@@ -1,6 +1,7 @@
 #lang racket/base
+(require (for-syntax racket/base))
 (require racket/string racket/list racket/contract racket/vector)
-(require "patterns.rkt" "exceptions.rkt")
+(require "patterns.rkt" "exceptions.rkt" txexpr xml)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Hyphenate module
@@ -12,20 +13,20 @@
 ;;; (also in the public domain)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(provide (contract-out 
-          [hyphenate 
-           ((string?) ((or/c char? string?) #:exceptions (listof exception-word?) #:min-length (or/c integer? #f)) . ->* . string?)])
-         (contract-out 
-          [hyphenatef
-           ((string? procedure?) ((or/c char? string?) #:exceptions (listof exception-word?) #:min-length (or/c integer? #f)) . ->* . string?)])
-         (contract-out 
-          [unhyphenate 
-           ((string?) ((or/c char? string?)) . ->* . string?)]))
+(define-syntax (define+provide/contract stx)
+  (syntax-case stx ()
+    [(_ (proc arg ... . rest-arg) contract body ...)
+     #'(define+provide/contract proc contract
+         (λ(arg ... . rest-arg) body ...))]
+    [(_ name contract body ...)
+     #'(begin
+         (provide (contract-out [name contract]))
+         (define name body ...))]))
 
-;; global data, define now but set! them later (because they're potentially big & slow)
+;; module data, define now but set! them later (because they're potentially big & slow)
 (define exceptions #f)
 (define pattern-tree #f)
-;; global default values
+;; module default values
 (define default-min-length 5)
 (define default-joiner (integer->char #x00AD))
 
@@ -39,8 +40,6 @@
     (list->vector (cons 0 (map (λ(x) (if (equal? x "-") 1 0)) (regexp-split #px"[a-z]" x)))))
   
   (make-hash (map (λ(x) (cons (make-key x) (make-value x))) exn-strings)))
-
-
 
 ;; An exception-word is a string of word characters or hyphens.
 (define (exception-word? x)
@@ -147,11 +146,22 @@
 (define (joiner->string joiner)
   (if (char? joiner) (format "~a" joiner) joiner))
 
+;; helper macro that applies proc to all strings found in xexpr input
+(define-syntax (apply-xexpr-strings stx)
+  (syntax-case stx ()
+    [(_ proc val) #'(let loop ([x val])
+                      (cond
+                        [(string? x) (proc x)]
+                        [(txexpr? x) (map-elements loop x)]
+                        [else x]))]))
+
 ;; Hyphenate using a filter procedure.
-;; Theoretically possible to do this externally,
-;; but it would just mean doing the regexp-replace twice.
-(define (hyphenatef text proc [joiner default-joiner] #:exceptions [extra-exceptions '()]  #:min-length [min-length default-min-length])
-  
+(define+provide/contract (hyphenatef x proc [joiner default-joiner] 
+                                     #:exceptions [extra-exceptions '()]  
+                                     #:min-length [min-length default-min-length])
+  ((xexpr? procedure?) ((or/c char? string?) 
+                        #:exceptions (listof exception-word?) 
+                        #:min-length (or/c integer? #f)) . ->* . xexpr/c)
   
   ;; set up module data
   ;; todo?: change set! to parameterize
@@ -161,15 +171,29 @@
   (define joiner-string (joiner->string joiner))
   (define word-pattern #px"\\w+") ;; more restrictive than exception-word
   ;; todo?: connect this regexp pattern to the one used in word? predicate
-  (regexp-replace* word-pattern text (λ(word) (if (proc word) (string-join (word->hyphenation-points word min-length) joiner-string) word))))
+  (define (insert-hyphens text)
+    (regexp-replace* word-pattern text (λ(word) (if (proc word) (string-join (word->hyphenation-points word min-length) joiner-string) word))))
+  
+  (apply-xexpr-strings insert-hyphens x))
 
 
-;; Default hyphenate function.
-(define (hyphenate text [joiner default-joiner]  #:exceptions [extra-exceptions '()] #:min-length [min-length default-min-length])
-  (hyphenatef text (λ(x) #t) joiner #:exceptions extra-exceptions #:min-length min-length))
+;; Default hyphenate is a special case of hyphenatef.
+(define+provide/contract (hyphenate x [joiner default-joiner]  
+                                    #:exceptions [extra-exceptions '()] 
+                                    #:min-length [min-length default-min-length])
+  ((xexpr/c) ((or/c char? string?) 
+              #:exceptions (listof exception-word?) 
+              #:min-length (or/c integer? #f)) . ->* . xexpr/c)
+  (hyphenatef x (λ(x) #t) joiner #:exceptions extra-exceptions #:min-length min-length))
 
-(define (unhyphenate text [joiner default-joiner])
-  (string-replace text (joiner->string joiner) ""))
 
+;; Remove hyphens.
+(define+provide/contract (unhyphenate x [joiner default-joiner])
+  ((xexpr/c) ((or/c char? string?)) . ->* . xexpr/c)
+  
+  (define (remove-hyphens text)
+    (string-replace text (joiner->string joiner) ""))
+  
+  (apply-xexpr-strings remove-hyphens x))  
 
 
