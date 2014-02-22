@@ -1,6 +1,6 @@
 #lang racket/base
 (require (for-syntax racket/base))
-(require racket/string racket/list racket/contract racket/vector)
+(require racket/string racket/list racket/vector)
 (require "patterns.rkt" "exceptions.rkt" txexpr xml)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -13,15 +13,19 @@
 ;;; (also in the public domain)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-syntax (define+provide/contract stx)
+(module+ safe (require racket/contract))
+
+(define-syntax (define+provide+safe stx)
   (syntax-case stx ()
     [(_ (proc arg ... . rest-arg) contract body ...)
-     #'(define+provide/contract proc contract
+     #'(define+provide+safe proc contract
          (λ(arg ... . rest-arg) body ...))]
     [(_ name contract body ...)
      #'(begin
-         (provide (contract-out [name contract]))
-         (define name body ...))]))
+         (define name body ...)
+         (provide name)
+         (module+ safe 
+           (provide (contract-out [name contract]))))]))
 
 ;; module data, define now but set! them later (because they're potentially big & slow)
 (define exceptions #f)
@@ -32,14 +36,14 @@
 
 
 ;; Convert the hyphenated pattern into a point array for use later.
-(define (list->exceptions exn-strings) 
+(define (vector->exceptions exn-strings) 
   (define (make-key x)
     (string-replace x "-" ""))
   
   (define (make-value x)
     (list->vector (cons 0 (map (λ(x) (if (equal? x "-") 1 0)) (regexp-split #px"[a-z]" x)))))
   
-  (make-hash (map (λ(x) (cons (make-key x) (make-value x))) exn-strings)))
+  (make-hash (vector->list (vector-map (λ(x) (cons (make-key x) (make-value x))) exn-strings))))
 
 ;; An exception-word is a string of word characters or hyphens.
 (define (exception-word? x)
@@ -68,7 +72,7 @@
           (hash-set! tree char (make-hash)))
         (set! tree (hash-ref tree char)))
       (hash-set! tree empty points)))
-  (map insert-pattern pattern-data)
+  (vector-map insert-pattern pattern-data)
   tree)
 
 
@@ -78,7 +82,7 @@
   (define (make-zeroes points)
     ; controls hyphenation zone from edges of word
     ; possible todo: make this user-configurable?
-    (map (λ(i) (vector-set! points i 0)) (list 1 2 (- (vector-length points) 2) (- (vector-length points) 3)))
+    (vector-map (λ(i) (vector-set! points i 0)) (vector 1 2 (- (vector-length points) 2) (- (vector-length points) 3)))
     points)
   
   (let* ([word (string-downcase word)]
@@ -156,7 +160,7 @@
                         [else x]))]))
 
 ;; Hyphenate using a filter procedure.
-(define+provide/contract (hyphenatef x proc [joiner default-joiner] 
+(define+provide+safe (hyphenatef x proc [joiner default-joiner] 
                                      #:exceptions [extra-exceptions '()]  
                                      #:min-length [min-length default-min-length])
   ((xexpr? procedure?) ((or/c char? string?) 
@@ -165,7 +169,7 @@
   
   ;; set up module data
   ;; todo?: change set! to parameterize
-  (set! exceptions (list->exceptions (append default-exceptions extra-exceptions)))
+  (set! exceptions (vector->exceptions (vector-append default-exceptions (list->vector extra-exceptions))))
   (when (not pattern-tree) (set! pattern-tree (make-pattern-tree default-patterns)))
   
   (define joiner-string (joiner->string joiner))
@@ -178,7 +182,7 @@
 
 
 ;; Default hyphenate is a special case of hyphenatef.
-(define+provide/contract (hyphenate x [joiner default-joiner]  
+(define+provide+safe (hyphenate x [joiner default-joiner]  
                                     #:exceptions [extra-exceptions '()] 
                                     #:min-length [min-length default-min-length])
   ((xexpr/c) ((or/c char? string?) 
@@ -188,12 +192,10 @@
 
 
 ;; Remove hyphens.
-(define+provide/contract (unhyphenate x [joiner default-joiner])
+(define+provide+safe (unhyphenate x [joiner default-joiner])
   ((xexpr/c) ((or/c char? string?)) . ->* . xexpr/c)
   
   (define (remove-hyphens text)
     (string-replace text (joiner->string joiner) ""))
   
   (apply-xexpr-strings remove-hyphens x))  
-
-
