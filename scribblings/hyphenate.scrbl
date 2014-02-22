@@ -22,10 +22,16 @@ At the command line:
 After that, you can update the package like so:
 @verbatim{raco pkg update hyphenate}
 
+@section{Importing the module}
+
+@defmodule[#:multi (hyphenate (submod hyphenate safe))]
+
+The module operates in two modes: fast and safe. Fast mode is the default, which you get by importing the module in the usual way: @code{(require hyphenate)}. 
+
+Safe mode enables the function contracts documented below. Use safe mode by importing the module as @code{(require (submod hyphenate safe))}.
+
 
 @section{Interface}
-
-@defmodule[hyphenate]
 
 @defproc[
 (hyphenate 

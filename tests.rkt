@@ -1,5 +1,5 @@
 #lang racket/base
-(require "main.rkt" rackunit)
+(require (submod "main.rkt" safe) rackunit)
 
 (require/expose "main.rkt" (word->hyphenation-points exception-word?))
 
