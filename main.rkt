@@ -151,21 +151,24 @@
   (if (char? joiner) (format "~a" joiner) joiner))
 
 ;; helper macro that applies proc to all strings found in xexpr input
-(define-syntax (apply-xexpr-strings stx)
-  (syntax-case stx ()
-    [(_ proc val) #'(let loop ([x val])
-                      (cond
-                        [(string? x) (proc x)]
-                        [(txexpr? x) (map-elements loop x)]
-                        [else x]))]))
+(define (apply-xexpr-strings proc x [tags-to-omit '()])
+;  ((procedure? txexpr?) ((or/c null (listof txexpr-tag?))) . ->* . txexpr?)
+  (let loop ([x x])
+    (cond
+      [(string? x) (proc x)]
+      [(and (txexpr? x) (not (member (car x) tags-to-omit))) (cons (car x) (map loop (cdr x)))]
+      [else x])))
+
 
 ;; Hyphenate using a filter procedure.
 (define+provide+safe (hyphenatef x proc [joiner default-joiner] 
-                                     #:exceptions [extra-exceptions '()]  
-                                     #:min-length [min-length default-min-length])
+                                 #:exceptions [extra-exceptions '()]  
+                                 #:min-length [min-length default-min-length]
+                                 #:omit-tags [tags-to-omit '()])
   ((xexpr? procedure?) ((or/c char? string?) 
                         #:exceptions (listof exception-word?) 
-                        #:min-length (or/c integer? #f)) . ->* . xexpr/c)
+                        #:min-length (or/c integer? #f)
+                        #:omit-tags (or/c null (listof txexpr-tag?))) . ->* . xexpr/c)
   
   ;; set up module data
   ;; todo?: change set! to parameterize
@@ -178,17 +181,21 @@
   (define (insert-hyphens text)
     (regexp-replace* word-pattern text (λ(word) (if (proc word) (string-join (word->hyphenation-points word min-length) joiner-string) word))))
   
-  (apply-xexpr-strings insert-hyphens x))
+  (apply-xexpr-strings insert-hyphens x tags-to-omit))
 
 
 ;; Default hyphenate is a special case of hyphenatef.
 (define+provide+safe (hyphenate x [joiner default-joiner]  
-                                    #:exceptions [extra-exceptions '()] 
-                                    #:min-length [min-length default-min-length])
+                                #:exceptions [extra-exceptions '()] 
+                                #:min-length [min-length default-min-length]
+                                #:omit-tags [tags-to-omit '()])
   ((xexpr/c) ((or/c char? string?) 
               #:exceptions (listof exception-word?) 
-              #:min-length (or/c integer? #f)) . ->* . xexpr/c)
-  (hyphenatef x (λ(x) #t) joiner #:exceptions extra-exceptions #:min-length min-length))
+              #:min-length (or/c integer? #f)
+              #:omit-tags (or/c null (listof txexpr-tag?))) . ->* . xexpr/c)
+  (hyphenatef x (λ(x) #t) joiner #:exceptions extra-exceptions #:min-length min-length #:omit-tags tags-to-omit))
+
+
 
 
 ;; Remove hyphens.

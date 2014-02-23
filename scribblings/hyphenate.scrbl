@@ -1,9 +1,9 @@
 #lang scribble/manual
 
-@(require scribble/eval (for-label racket "../main.rkt" xml))
+@(require scribble/eval (for-label txexpr racket "../main.rkt" xml))
 
 @(define my-eval (make-base-eval))
-@(my-eval `(require hyphenate xml))
+@(my-eval `(require (submod txexpr safe) (submod hyphenate safe) xml))
 
 
 @title{Hyphenate}
@@ -39,7 +39,8 @@ Safe mode enables the function contracts documented below. Use safe mode by impo
 [xexpr xexpr/c] 
 [joiner (or/c char? string?) (integer->char #x00AD)]
 [#:exceptions exceptions (listof string?) empty]
-[#:min-length length (or/c integer? false?) 5])
+[#:min-length length (or/c integer? false?) 5]
+[#:omit-tags tags (or/c null (listof txexpr-tag?)) null])
 xexpr/c]
 Hyphenate @racket[_xexpr] by calculating hyphenation points and inserting @racket[_joiner] at those points. By default, @racket[_joiner] is the soft hyphen (Unicode 00AD = decimal 173). Words shorter than @racket[#:min-length] @racket[_length] will not be hyphenated. To hyphenate words of any length, use @racket[#:min-length] @racket[#f].
 
@@ -96,13 +97,19 @@ You can send HTML-style X-expressions through @racket[hyphenate]. It will recurs
 
 Don't send raw HTML or XML through @racket[hyphenate]. It can't distinguish tags and attributes from textual content, so everything will be hyphenated, thus goofing up your file. But you can easily convert your HTML or XML to an X-expression, hyphenate it, and then convert back.
 
-@margin-note{In HTML, be careful not to include any @code{<script>} or @code{<style>} blocks, which contain non-hyphenatable data. The easiest way to protect that data — and arguably the right way — is to wrap it in a @code{<![CDATA[]]>} tag.}
-
 @examples[#:eval my-eval
     (define html "<body style=\"background: yellow\">Hello</body>")
     (hyphenate html #\-)
     (xexpr->string (hyphenate (string->xexpr html) #\-)) 
    ]   
+
+If you're working with HTML, be careful not to include any @code{<script>} or @code{<style>} blocks, which contain non-hyphenatable data. You can protect that data by using the #:omit-tags parameter, which will skip over the listed tags.
+
+@examples[#:eval my-eval
+     (hyphenate '(body "hyphenate" (script "don't hyphenate")) #\-)
+     (hyphenate '(body "hyphenate" (script "don't hyphenate")) #\- 
+     #:omit-tags '(script))
+   ]
 
 
 @defproc[
@@ -111,7 +118,8 @@ Don't send raw HTML or XML through @racket[hyphenate]. It can't distinguish tags
 [pred procedure?]
 [joiner (or/c char? string?) (integer->char \#x00AD)]
 [#:exceptions exceptions (listof string?) empty]
-[#:min-length length (or/c integer? false?) 5])
+[#:min-length length (or/c integer? false?) 5]
+[#:omit-tags tags (or/c null (listof txexpr-tag?)) null])
 xexpr/c]
 Like @racket[hyphenate], but only words matching @racket[_pred] are hyphenated. Convenient if you want to prevent hyphenation of certain sets of words, like proper names:
 

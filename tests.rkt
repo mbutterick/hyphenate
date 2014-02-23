@@ -24,3 +24,13 @@
 (check-false (exception-word? "foobar!"))
 (check-true (exception-word? "foo-bar"))
 (check-false (exception-word? "foo bar"))
+
+
+(check-equal? (hyphenate '(p "circular polymorphism" amp (em "squandering")) #:omit-tags '(em)) 
+              '(p "cir\u00ADcu\u00ADlar poly\u00ADmor\u00ADphism" amp (em "squandering")))
+
+(check-equal? (hyphenate '(p "circular polymorphism" amp (em "squandering")) #:omit-tags '(p)) 
+              '(p "circular polymorphism" amp (em "squandering")))
+
+(check-equal? (hyphenate '(p  (foo "circular") (bar "circular") (zam "circular")) #:omit-tags '(foo zam)) 
+              '(p  (foo "circular") (bar "cir\u00ADcu\u00ADlar") (zam "circular")))
