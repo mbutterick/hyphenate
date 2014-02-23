@@ -10,6 +10,9 @@
 
 @author[(author+email "Matthew Butterick" "mb@mbtype.com")]
 
+
+@defmodule[#:multi (hyphenate (submod hyphenate safe))]
+
 A simple hyphenation engine that uses the Knuth–Liang hyphenation algorithm originally developed for TeX. This implementation is a port of Ned Batchelder's @link["http://nedbatchelder.com/code/modules/hyphenate.html"]{Python version}. I have added little to their work. Accordingly, I take little credit.
 
 I originally put together this module to handle hyphenation for my web-based book @link["http://practicaltypography.com"]{Butterick's Practical Typography} (which I made with Racket & Scribble). Though support for CSS-based hyphenation in web browsers is @link["http://caniuse.com/#search=hyphen"]{still iffy}, soft hyphens work reliably well. But putting them into the text manually is a drag. Thus a module was born.
@@ -24,12 +27,10 @@ After that, you can update the package like so:
 
 @section{Importing the module}
 
-@defmodule[#:multi (hyphenate (submod hyphenate safe))]
 
 The module operates in two modes: fast and safe. Fast mode is the default, which you get by importing the module in the usual way: @code{(require hyphenate)}. 
 
 Safe mode enables the function contracts documented below. Use safe mode by importing the module as @code{(require (submod hyphenate safe))}.
-
 
 @section{Interface}
 
