@@ -103,7 +103,7 @@ Don't send raw HTML or XML through @racket[hyphenate]. It can't distinguish tags
     (xexpr->string (hyphenate (string->xexpr html) #\-)) 
    ]   
 
-If you're working with HTML, be careful not to include any @code{<script>} or @code{<style>} blocks, which contain non-hyphenatable data. You can protect that data by using the #:omit-tags parameter, which will skip over the listed tags.
+If you're working with HTML, be careful not to include any @code{<script>} or @code{<style>} blocks, which contain non-hyphenatable data. You can protect that data by using the @code[#:omit-tags] parameter, which will skip over the listed tags.
 
 @examples[#:eval my-eval
      (hyphenate '(body "hyphenate" (script "don't hyphenate")) #\-)
