@@ -94,14 +94,16 @@ You can send HTML-style X-expressions through @racket[hyphenate]. It will recurs
       (hyphenate '(div "The (span epsilon) entity:" epsilon) #\-) 
    ]
 
-Don't send raw HTML or XML through @racket[hyphenate]. It can't distinguish tags and attributes from textual content, so everything will be hyphenated, thus goofing up your file. But you can easily convert HTML or XML to an X-expression, hyphenate it, and then convert back.
+Don't send raw HTML or XML through @racket[hyphenate]. It can't distinguish tags and attributes from textual content, so everything will be hyphenated, thus goofing up your file. But you can easily convert your HTML or XML to an X-expression, hyphenate it, and then convert back.
+
+@margin-note{In HTML, be careful not to include any @code{<script>} or @code{<style>} blocks, which contain non-hyphenatable data. The easiest way to protect that data — and arguably the right way — is to wrap it in a @code{<![CDATA[]]>} tag.}
 
 @examples[#:eval my-eval
     (define html "<body style=\"background: yellow\">Hello</body>")
     (hyphenate html #\-)
     (xexpr->string (hyphenate (string->xexpr html) #\-)) 
-   ]
-   
+   ]   
+
 
 @defproc[
 (hyphenatef
