@@ -40,7 +40,7 @@ Safe mode enables the function contracts documented below. Use safe mode by impo
 [joiner (or/c char? string?) (integer->char #x00AD)]
 [#:exceptions exceptions (listof string?) empty]
 [#:min-length length (or/c integer? false?) 5]
-[#:omit-tags tags (or/c null (listof txexpr-tag?)) null])
+[#:omit test ((or/c string? txexpr?) . -> . any/c) (λ(x) #f)])
 xexpr/c]
 Hyphenate @racket[_xexpr] by calculating hyphenation points and inserting @racket[_joiner] at those points. By default, @racket[_joiner] is the soft hyphen (Unicode 00AD = decimal 173). Words shorter than @racket[#:min-length] @racket[_length] will not be hyphenated. To hyphenate words of any length, use @racket[#:min-length] @racket[#f].
 
@@ -103,12 +103,14 @@ Don't send raw HTML or XML through @racket[hyphenate]. It can't distinguish tags
     (xexpr->string (hyphenate (string->xexpr html) #\-)) 
    ]   
 
-If you're working with HTML, be careful not to include any @code{<script>} or @code{<style>} blocks, which contain non-hyphenatable data. You can protect that data by using the @racket[#:omit-tags] keyword argument, which will skip over the listed tags.
+If you're working with HTML, be careful not to include any @code{<script>} or @code{<style>} blocks, which contain non-hyphenatable data. You can protect that data by using the @racket[#:omit] keyword to provide a @racket[_test]. The @racket[_test] will be applied to all tagged X-expressions (see @racket[txexpr?]) and strings. When @racket[_test] evaluates to true, the item will be skipped.
 
 @examples[#:eval my-eval
-     (hyphenate '(body "hyphenate" (script "don't hyphenate")) #\-)
-     (hyphenate '(body "hyphenate" (script "don't hyphenate")) #\- 
-     #:omit-tags '(script))
+     (hyphenate '(body "processing" (script "no processing")) #\-)
+     (hyphenate '(body "processing" (script "no processing")) #\- 
+     #:omit (λ(x) (and (txexpr? x) (member (get-tag x) '(script)))))
+     (hyphenate '(body "processing" (script "no processing")) #\- 
+     #:omit (λ(x) (and (string? x) (regexp-match #rx"^no" x))))
    ]
 
 
@@ -119,7 +121,7 @@ If you're working with HTML, be careful not to include any @code{<script>} or @c
 [joiner (or/c char? string?) (integer->char \#x00AD)]
 [#:exceptions exceptions (listof string?) empty]
 [#:min-length length (or/c integer? false?) 5]
-[#:omit-tags tags (or/c null (listof txexpr-tag?)) null])
+[#:omit test ((or/c string? txexpr?) . -> . any/c) (λ(x) #f)])
 xexpr/c]
 Like @racket[hyphenate], but only words matching @racket[_pred] are hyphenated. Convenient if you want to prevent hyphenation of certain sets of words, like proper names:
 
@@ -147,7 +149,8 @@ It's possible to do fancier kinds of hyphenation restrictions that take account 
 @defproc[
 (unhyphenate
 [xexpr xexpr/c] 
-[joiner (or/c char? string?) @(integer->char #x00AD)])
+[joiner (or/c char? string?) @(integer->char #x00AD)]
+[#:omit test ((or/c string? txexpr?) . -> . any/c) (λ(x) #f)])
 xexpr/c]
 Remove @racket[_joiner] from @racket[_xexpr]. Like @racket[hyphenate], it works on nested X-expressions.
 
