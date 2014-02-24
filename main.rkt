@@ -151,24 +151,28 @@
   (if (char? joiner) (format "~a" joiner) joiner))
 
 ;; helper macro that applies proc to all strings found in xexpr input
-(define (apply-xexpr-strings proc x [omit-test (λ(x) #f)])
-;  ((procedure? txexpr?) ((or/c null (listof txexpr-tag?))) . ->* . txexpr?)
+(define (apply-xexpr-strings proc x [omit-string (λ(x) #f)] [omit-txexpr (λ(x) #f)])
+  ;  ((procedure? txexpr?) ((or/c null (listof txexpr-tag?))) . ->* . txexpr?)
   (let loop ([x x])
     (cond
-      [(and (string? x) (not (omit-test x))) (proc x)]
-      [(and (txexpr? x) (not (omit-test x))) (cons (car x) (map loop (cdr x)))]
+      [(and (string? x) (not (omit-string x))) (proc x)]
+      [(and (txexpr? x) (not (omit-txexpr x))) (cons (car x) (map loop (cdr x)))]
       [else x])))
 
 
 ;; Hyphenate using a filter procedure.
-(define+provide+safe (hyphenatef x proc [joiner default-joiner] 
-                                 #:exceptions [extra-exceptions '()]  
-                                 #:min-length [min-length default-min-length]
-                                 #:omit [omit-test (λ(x) #f)])
-  ((xexpr? procedure?) ((or/c char? string?) 
-                        #:exceptions (listof exception-word?) 
-                        #:min-length (or/c integer? #f)
-                        #:omit ((or/c string? txexpr?) . -> . any/c)) . ->* . xexpr/c)
+(define+provide+safe (hyphenate x [joiner default-joiner] 
+                                #:exceptions [extra-exceptions '()]  
+                                #:min-length [min-length default-min-length]
+                                #:omit-word [omit-word? (λ(x) #f)]
+                                #:omit-string [omit-string? (λ(x) #f)]
+                                #:omit-txexpr [omit-txexpr? (λ(x) #f)])
+  ((xexpr?) ((or/c char? string?) 
+             #:exceptions (listof exception-word?) 
+             #:min-length (or/c integer? #f)
+             #:omit-word (string? . -> . any/c)
+             #:omit-string (string? . -> . any/c)
+             #:omit-txexpr (txexpr? . -> . any/c)) . ->* . xexpr/c)
   
   ;; set up module data
   ;; todo?: change set! to parameterize
@@ -179,30 +183,23 @@
   (define word-pattern #px"\\w+") ;; more restrictive than exception-word
   ;; todo?: connect this regexp pattern to the one used in word? predicate
   (define (insert-hyphens text)
-    (regexp-replace* word-pattern text (λ(word) (if (proc word) (string-join (word->hyphenation-points word min-length) joiner-string) word))))
+    (regexp-replace* word-pattern text (λ(word) (if (not (omit-word? word)) (string-join (word->hyphenation-points word min-length) joiner-string) word))))
   
-  (apply-xexpr-strings insert-hyphens x omit-test))
-
-
-;; Default hyphenate is a special case of hyphenatef.
-(define+provide+safe (hyphenate x [joiner default-joiner]  
-                                #:exceptions [extra-exceptions '()] 
-                                #:min-length [min-length default-min-length]
-                                #:omit [omit-test (λ(x) #f)])
-  ((xexpr/c) ((or/c char? string?) 
-              #:exceptions (listof exception-word?) 
-              #:min-length (or/c integer? #f)
-              #:omit ((or/c string? txexpr?) . -> . any/c)) . ->* . xexpr/c)
-  (hyphenatef x (λ(x) #t) joiner #:exceptions extra-exceptions #:min-length min-length #:omit omit-test))
-
+  (apply-xexpr-strings insert-hyphens x omit-string? omit-txexpr?))
 
 
 
 ;; Remove hyphens.
-(define+provide+safe (unhyphenate x [joiner default-joiner] #:omit [omit-test (λ(x) #f)])
-  ((xexpr/c) ((or/c char? string?) #:omit ((or/c string? txexpr?) . -> . any/c)) . ->* . xexpr/c)
-  
-  (define (remove-hyphens text)
-    (string-replace text (joiner->string joiner) ""))
-  
-  (apply-xexpr-strings remove-hyphens x omit-test))  
+(define+provide+safe (unhyphenate x [joiner default-joiner] 
+                                  #:omit-word [omit-word? (λ(x) #f)]
+                                  #:omit-string [omit-string? (λ(x) #f)]
+                                  #:omit-txexpr [omit-txexpr? (λ(x) #f)])
+  ((xexpr/c) ((or/c char? string?) 
+              #:omit-word (string? . -> . any/c)
+              #:omit-string (string? . -> . any/c)
+              #:omit-txexpr (txexpr? . -> . any/c)) . ->* . xexpr/c)
+
+(define (remove-hyphens text)
+  (string-replace text (joiner->string joiner) ""))
+
+(apply-xexpr-strings remove-hyphens x omit-string? omit-txexpr?))  

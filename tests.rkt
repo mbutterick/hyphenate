@@ -7,7 +7,6 @@
 (check-equal? (hyphenate "polymorphism" #:min-length 100) "polymorphism")
 (check-equal? (hyphenate "ugly" #:min-length 1) "ug\u00ADly")
 (check-equal? (unhyphenate "poly\u00ADmor\u00ADphism") "polymorphism")
-(check-equal? (hyphenatef "polymorphism" (λ(x) #f)) "polymorphism")
 (check-equal? (hyphenate "polymorphism" #\-) "poly-mor-phism")
 (check-equal? (hyphenate "polymorphism" "foo") "polyfoomorfoophism")
 (check-equal? (unhyphenate "polyfoomorfoophism" "foo") "polymorphism")
@@ -27,27 +26,31 @@
 
 
 ;; omit certain tags
-(check-equal? (hyphenate '(p "circular polymorphism" amp (em "squandering")) #:omit (λ(x) (and (txexpr? x) (member (car x) '(em))))) 
+(check-equal? (hyphenate '(p "circular polymorphism" amp (em "squandering")) #:omit-txexpr (λ(x) (member (car x) '(em)))) 
               '(p "cir\u00ADcu\u00ADlar poly\u00ADmor\u00ADphism" amp (em "squandering")))
 
-(check-equal? (hyphenate '(p "circular polymorphism" amp (em "squandering")) #:omit (λ(x) (and (txexpr? x) (member (car x) '(p))))) 
+(check-equal? (hyphenate '(p "circular polymorphism" amp (em "squandering")) #:omit-txexpr (λ(x) (member (car x) '(p)))) 
               '(p "circular polymorphism" amp (em "squandering")))
 
-(check-equal? (hyphenate '(p  (foo "circular") (bar "circular") (zam "circular")) #:omit (λ(x) (and (txexpr? x) (member (car x) '(foo zam))))) 
+(check-equal? (hyphenate '(p  (foo "circular") (bar "circular") (zam "circular")) #:omit-txexpr (λ(x) (member (car x) '(foo zam)))) 
               '(p  (foo "circular") (bar "cir\u00ADcu\u00ADlar") (zam "circular")))
 
 (require txexpr)
 ; omit txexprs with an attribute
 (check-equal? (hyphenate '(p  (foo ((hyphens "no-thanks")) "circular") (foo "circular")) 
-                         #:omit (λ(x) (and (txexpr? x)
-                                            (with-handlers ([exn:fail? (λ(exn) #f)]) 
-                                                    (equal? (attr-ref x 'hyphens) "no-thanks"))))) 
+                         #:omit-txexpr (λ(x) (with-handlers ([exn:fail? (λ(exn) #f)]) 
+                                                    (equal? (attr-ref x 'hyphens) "no-thanks")))) 
               '(p  (foo ((hyphens "no-thanks")) "circular") (foo "cir\u00ADcu\u00ADlar")))
 
 
 ;; omit strings that end with "s"
-(check-equal? (hyphenate '(p (foo "tailfeathers") (foo "tailfeather")) #:omit (λ(x) (and (string? x) (regexp-match #rx"s$" x))))
-              '(p (foo "tailfeathers") (foo "tail\u00ADfeath\u00ADer")))
+(check-equal? (hyphenate '(p (foo "curses tailfeathers") (foo "curses tailfeather")) #:omit-string (λ(x) (regexp-match #rx"s$" x)))
+              '(p (foo "curses tailfeathers") (foo "curs\u00ADes tail\u00ADfeath\u00ADer")))
 
-(check-equal? (unhyphenate '(p (script "tail-feathers") (em "tail-feathers")) #\- #:omit (λ(x) (and (txexpr? x) (member (car x) '(script))))) 
+;; omit words that end with "s"
+(check-equal? (hyphenate '(p (foo "curses tailfeathers") (foo "curses tailfeather")) #:omit-word (λ(x) (regexp-match #rx"s$" x)))
+              '(p (foo "curses tailfeathers") (foo "curses tail\u00ADfeath\u00ADer")))
+
+
+(check-equal? (unhyphenate '(p (script "tail-feathers") (em "tail-feathers")) #\- #:omit-txexpr (λ(x) (member (car x) '(script)))) 
               '(p (script "tail-feathers") (em "tailfeathers")))

@@ -40,7 +40,9 @@ Safe mode enables the function contracts documented below. Use safe mode by impo
 [joiner (or/c char? string?) (integer->char #x00AD)]
 [#:exceptions exceptions (listof string?) empty]
 [#:min-length length (or/c integer? false?) 5]
-[#:omit test ((or/c string? txexpr?) . -> . any/c) (λ(x) #f)])
+[#:omit-word word-test (string? . -> . any/c) (λ(x) #f)]
+[#:omit-string string-test (string? . -> . any/c) (λ(x) #f)]
+[#:omit-txexpr txexpr-test (txexpr? . -> . any/c) (λ(x) #f)])
 xexpr/c]
 Hyphenate @racket[_xexpr] by calculating hyphenation points and inserting @racket[_joiner] at those points. By default, @racket[_joiner] is the soft hyphen (Unicode 00AD = decimal 173). Words shorter than @racket[#:min-length] @racket[_length] will not be hyphenated. To hyphenate words of any length, use @racket[#:min-length] @racket[#f].
 
@@ -103,56 +105,54 @@ Don't send raw HTML or XML through @racket[hyphenate]. It can't distinguish tags
     (xexpr->string (hyphenate (string->xexpr html) #\-)) 
    ]   
 
-If you're working with HTML, be careful not to include any @code{<script>} or @code{<style>} blocks, which contain non-hyphenatable data. You can protect that data by using the @racket[#:omit] keyword to provide a @racket[_test]. The @racket[_test] will be applied to all tagged X-expressions (see @racket[txexpr?]) and strings. When @racket[_test] evaluates to true, the item will be skipped.
+If you're working with HTML, be careful not to include any @code{<script>} or @code{<style>} blocks, which contain non-hyphenatable data. You can protect that data by using the @racket[#:omit-txexpr] keyword to specify a @racket[_txexpr-test]. The test will be applied to all tagged X-expressions (see @racket[txexpr?]). When @racket[_txexpr-test] evaluates to true, the item will be skipped.
 
 @examples[#:eval my-eval
      (hyphenate '(body "processing" (script "no processing")) #\-)
      (hyphenate '(body "processing" (script "no processing")) #\- 
-     #:omit (λ(x) (and (txexpr? x) (member (get-tag x) '(script)))))
-     (hyphenate '(body "processing" (script "no processing")) #\- 
-     #:omit (λ(x) (and (string? x) (regexp-match #rx"^no" x))))
-   ]
+     #:omit-txexpr (λ(tx) (member (get-tag tx) '(script))))
+]
 
+You can also use @racket[#:omit-txexpr] to omit tagged X-expressions with particular attributes. This can be used to selectively suppress hyphenation at the markup level.
 
-@defproc[
-(hyphenatef
-[xexpr xexpr/c] 
-[pred procedure?]
-[joiner (or/c char? string?) (integer->char \#x00AD)]
-[#:exceptions exceptions (listof string?) empty]
-[#:min-length length (or/c integer? false?) 5]
-[#:omit test ((or/c string? txexpr?) . -> . any/c) (λ(x) #f)])
-xexpr/c]
-Like @racket[hyphenate], but only words matching @racket[_pred] are hyphenated. Convenient if you want to prevent hyphenation of certain sets of words, like proper names:
+@examples[#:eval my-eval
+     (hyphenate '(p (span "processing") (span [[klh "no"]] "processing")) #\-)
+     (hyphenate '(p (span "processing") (span [[klh "no"]] "processing")) #\-
+     #:omit-txexpr (λ(tx) (and (attrs-have-key? tx 'klh) 
+     (equal? (attr-ref tx 'klh) "no"))))
+]
+
+Similarly, you can use the @racket[#:omit-word] argument to avoid words that match @racket[_word-test]. Convenient if you want to prevent hyphenation of certain sets of words, like proper names:
 
 @examples[#:eval my-eval
      (hyphenate "Brennan Huff likes fancy sauce" #\-) 
-     (define uncapitalized? (λ(word) (let ([letter (substring word 0 1)])
- (equal? letter (string-downcase letter)))))
-     (hyphenatef "Brennan Huff likes fancy sauce" uncapitalized? #\-) 
+     (define capitalized? (λ(word) (let ([letter (substring word 0 1)])
+ (equal? letter (string-upcase letter)))))
+     (hyphenate "Brennan Huff likes fancy sauce" #:omit-word capitalized? #\-) 
    ]
    
-Sometimes you need @racket[hyphenatef] to prevent unintended consequences. For instance, if you're using ligatures in CSS, certain groups of characters (fi, fl, ffi, et al.) will be replaced by a single glyph. That looks snazzy, but adding soft hyphens between any of these pairs will defeat the ligature substitution, creating inconsistent results. With @racket[hyphenatef], you can skip these words:
+Sometimes you need @racket[#:omit-word] to prevent unintended consequences. For instance, if you're using ligatures in CSS, certain groups of characters (fi, fl, ffi, et al.) will be replaced by a single glyph. That looks snazzy, but adding soft hyphens between any of these pairs will defeat the ligature substitution, creating inconsistent results. With @racket[#:omit-word], you can skip these words:
 
 @margin-note{``Wouldn't it be better to exclude certain pairs of letters rather than whole words?'' Yes. But for now, that's not supported.}
 
 @examples[#:eval my-eval
 (hyphenate "Hufflepuff golfing final on Tuesday" #\-)
-(define (no-ligs? word)
-  (not (ormap (λ(lig) (regexp-match lig word)) 
-  '("ff" "fi" "fl" "ffi" "ffl"))))
-(hyphenatef "Hufflepuff golfing final on Tuesday" no-ligs? #\-) 
+(define (ligs? word)
+  (ormap (λ(lig) (regexp-match lig word)) 
+  '("ff" "fi" "fl" "ffi" "ffl")))
+(hyphenate "Hufflepuff golfing final on Tuesday" #:omit-word ligs? #\-) 
 ]
 
-It's possible to do fancier kinds of hyphenation restrictions that take account of context, like not hyphenating the last word of a paragraph. But @racket[hyphenatef] only operates on words. So you'll have to write some fancier code. Separate out the words eligible for hyphenation, and then send them through good old @racket[hyphenate].
 
 @defproc[
 (unhyphenate
 [xexpr xexpr/c] 
 [joiner (or/c char? string?) @(integer->char #x00AD)]
-[#:omit test ((or/c string? txexpr?) . -> . any/c) (λ(x) #f)])
+[#:omit-word word-test (string? . -> . any/c) (λ(x) #f)]
+[#:omit-string string-test (string? . -> . any/c) (λ(x) #f)]
+[#:omit-txexpr txexpr-test (txexpr? . -> . any/c) (λ(x) #f)])
 xexpr/c]
-Remove @racket[_joiner] from @racket[_xexpr]. Like @racket[hyphenate], it works on nested X-expressions.
+Remove @racket[_joiner] from @racket[_xexpr]. Like @racket[hyphenate], it works on nested X-expressions, and offers the same @racket[#:omit-] options.
 
 @examples[#:eval my-eval
      (hyphenate '(p "strangely" (em "formatted" (strong "snowmen"))) #\-)
