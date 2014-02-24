@@ -54,3 +54,6 @@
 
 (check-equal? (unhyphenate '(p (script "tail-feathers") (em "tail-feathers")) #\- #:omit-txexpr (λ(x) (member (car x) '(script)))) 
               '(p (script "tail-feathers") (em "tailfeathers")))
+
+(check-equal? (unhyphenate '(p "cir-cu-lar poly-mor-phism" "cir-cu-lar poly-mor-phisms") #\- #:omit-string (λ(x) (regexp-match #rx"s$" x))) 
+              '(p "circular polymorphism" "cir-cu-lar poly-mor-phisms"))

@@ -150,8 +150,7 @@
 (define (joiner->string joiner)
   (if (char? joiner) (format "~a" joiner) joiner))
 
-;; helper macro that applies proc to all strings found in xexpr input
-(define (apply-xexpr-strings proc x [omit-string (λ(x) #f)] [omit-txexpr (λ(x) #f)])
+(define (apply-proc proc x [omit-string (λ(x) #f)] [omit-txexpr (λ(x) #f)])
   ;  ((procedure? txexpr?) ((or/c null (listof txexpr-tag?))) . ->* . txexpr?)
   (let loop ([x x])
     (cond
@@ -160,7 +159,6 @@
       [else x])))
 
 
-;; Hyphenate using a filter procedure.
 (define+provide+safe (hyphenate x [joiner default-joiner] 
                                 #:exceptions [extra-exceptions '()]  
                                 #:min-length [min-length default-min-length]
@@ -180,16 +178,17 @@
   (when (not pattern-tree) (set! pattern-tree (make-pattern-tree default-patterns)))
   
   (define joiner-string (joiner->string joiner))
-  (define word-pattern #px"\\w+") ;; more restrictive than exception-word
   ;; todo?: connect this regexp pattern to the one used in word? predicate
+  (define word-pattern #px"\\w+") ;; more restrictive than exception-word
   (define (insert-hyphens text)
-    (regexp-replace* word-pattern text (λ(word) (if (not (omit-word? word)) (string-join (word->hyphenation-points word min-length) joiner-string) word))))
+    (regexp-replace* word-pattern text (λ(word) (if (not (omit-word? word)) 
+                                                    (string-join (word->hyphenation-points word min-length) joiner-string) 
+                                                    word))))
   
-  (apply-xexpr-strings insert-hyphens x omit-string? omit-txexpr?))
+  (apply-proc insert-hyphens x omit-string? omit-txexpr?))
 
 
 
-;; Remove hyphens.
 (define+provide+safe (unhyphenate x [joiner default-joiner] 
                                   #:omit-word [omit-word? (λ(x) #f)]
                                   #:omit-string [omit-string? (λ(x) #f)]
@@ -198,8 +197,11 @@
               #:omit-word (string? . -> . any/c)
               #:omit-string (string? . -> . any/c)
               #:omit-txexpr (txexpr? . -> . any/c)) . ->* . xexpr/c)
-
-(define (remove-hyphens text)
-  (string-replace text (joiner->string joiner) ""))
-
-(apply-xexpr-strings remove-hyphens x omit-string? omit-txexpr?))  
+  
+  (define word-pattern (pregexp (format "[\\w~a]+" joiner)))
+  (define (remove-hyphens text)
+    (regexp-replace* word-pattern text (λ(word) (if (not (omit-word? word)) 
+                                                    (string-replace word (joiner->string joiner) "") 
+                                                    word))))
+  
+  (apply-proc remove-hyphens x omit-string? omit-txexpr?))  
