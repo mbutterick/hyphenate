@@ -14,3 +14,5 @@ Icon
 .Spotlight-V100
 .Trashes
 scribblings/hyphenate.html
+scribblings/*.css
+scribblings/*.js
