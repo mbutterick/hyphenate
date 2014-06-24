@@ -1,17 +1,7 @@
 #lang racket/base
 (require (for-syntax racket/base))
-(require racket/string racket/list racket/vector)
+(require racket/string racket/list racket/bool)
 (require "patterns.rkt" "exceptions.rkt" txexpr xml)
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Hyphenate module
-;;; Racket port of Ned Batchelder's hyphenate.py
-;;; http://nedbatchelder.com/code/modules/hyphenate.html
-;;; (in the public domain)
-;;; which in turn was an implementation
-;;; of the Liang hyphenation algorithm in TeX
-;;; (also in the public domain)
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (module+ safe (require racket/contract))
 
@@ -28,122 +18,138 @@
            (provide (contract-out [name contract]))))]))
 
 ;; module data, define now but set! them later (because they're potentially big & slow)
-(define exceptions #f)
-(define pattern-tree #f)
+(define patterns #f)
+(define pattern-cache #f)
+
 ;; module default values
 (define default-min-length 5)
-(define default-joiner (integer->char #x00AD))
+(define default-min-ends-length 2)
+(define default-joiner #\u00AD)
 
+(define (add-pattern-to-cache pat)
+  (hash-set! pattern-cache (car pat) (cdr pat)))
+
+(define (initialize-patterns)
+  (when (not pattern-cache)
+    (set! pattern-cache (make-hash))
+    (for-each (compose1 add-exception symbol->string) default-exceptions))
+  (when (not patterns)
+    (set! patterns (make-hash (map (compose1 string->hashpair symbol->string) default-patterns)))))
 
 ;; Convert the hyphenated pattern into a point array for use later.
-(define (vector->exceptions exn-strings) 
-  (define (make-key x)
-    (string-replace x "-" ""))
-  
-  (define (make-value x)
-    (list->vector (cons 0 (map (λ(x) (if (equal? x "-") 1 0)) (regexp-split #px"[a-z]" x)))))
-  
-  (make-hash (vector->list (vector-map (λ(x) (cons (make-key x) (make-value x))) exn-strings))))
+(define (add-exception exception) 
+  (define (make-key x) (format ".~a." (string-replace x "-" "")))
+  (define (make-value x) `(0 ,@(map (λ(x) (if (equal? x "-") 1 0)) (regexp-split #px"[a-z]" x)) 0))
+  (add-pattern-to-cache (cons (make-key exception) (make-value exception)))
+  (void))
 
 ;; An exception-word is a string of word characters or hyphens.
 (define (exception-word? x)
   (if (regexp-match #px"^[\\w-]+$" x) #t #f))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Helper functions
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; Convert a pattern like 'a1bc3d4' into a string of chars 'abcd'
-;; and a list of points [ 1, 0, 3, 4 ].
-(define (make-pattern-tree pattern-data)
-  (define tree (make-hash))
+(define (string->hashpair pat)
+  (define boundary-name ".")
   
-  ;; Insert the pattern into the tree.  Each character finds a dict
-  ;; another level down in the tree, and leaf nodes have the list of
-  ;; points.
-  (define (insert-pattern pat)
-    ;; todo?: filter other characters out of input string?
-    (let* ([chars (regexp-replace* #px"[0-9]" pat "")]
-           ;; regexp returns list of strings
-           [points (map (λ(x) (if (> (string-length x) 0) (string->number x) 0)) (regexp-split #px"[.a-z]" pat))]
-           [tree tree])
-      (for ([char chars])
-        (when (not (hash-has-key? tree char))
-          (hash-set! tree char (make-hash)))
-        (set! tree (hash-ref tree char)))
-      (hash-set! tree empty points)))
-  (vector-map insert-pattern pattern-data)
-  tree)
-
-
-
-(define (make-points word) 
+  ;; first convert the pattern to a list of alternating letters and numbers.
+  ;; insert zeroes where there isn't a number in the pattern.
+  (define new-pat
+    (let* ([pat (map (λ(i) (format "~a" i)) (string->list pat))] ; convert to list
+           [pat (map (λ(i) (or (string->number i) i)) pat)] ; convert numbers
+           [pat (if (string? (car pat)) (cons 0 pat) pat)] ; add zeroes to front where needed
+           [pat (if (string? (car (reverse pat))) (reverse (cons 0 (reverse pat))) pat)]) ; and back
+      (flatten (for/list ([i (length pat)])
+                 (define current (list-ref pat i))
+                 (if (= i (sub1 (length pat))) 
+                    current
+                    (let ([next (list-ref pat (add1 i))])
+                      ;; insert zeroes where there isn't a number
+                      (if (and (or (equal? current boundary-name) (string? current)) (string? next)) 
+                         (list current 0)
+                         current)))))))
   
-  (define (make-zeroes points)
-    ; controls hyphenation zone from edges of word
-    ; possible todo: make this user-configurable?
-    (vector-map (λ(i) (vector-set! points i 0)) (vector 1 2 (- (vector-length points) 2) (- (vector-length points) 3)))
-    points)
+  ;; then slice out the string & numerical parts to be a key / value pair.
+  (define-values (value key) (partition number? new-pat))
+  (cons (apply string-append key) value))
+
+
+
+(define (make-points word)
+  ;; walk through all the substrings and see if there's a matching pattern.
+  ;; if so, pad it out to full length (so we can (apply map max ...) later on)
+  (define word-with-dots (format ".~a." (string-downcase word)))
+  (define matching-patterns 
+    (if (hash-has-key? pattern-cache word-with-dots)
+       (list (hash-ref pattern-cache word-with-dots))
+       (let ([word-as-list (string->list word-with-dots)])
+         (cons (make-list (add1 (length word-as-list)) 0) ;; ensures there's at least one (null) element in return value
+              (filter-not void?
+                         (for*/list ([len (length word-as-list)] [index (- (length word-as-list) len)])
+                           (define substring (list->string (take (drop word-as-list index) (add1 len))))
+                           (when (hash-has-key? patterns substring)
+                             (define value (hash-ref patterns substring))
+                             ;; put together head padding + value + tail padding
+                             (append  (make-list index 0)  value  (make-list (- (add1 (length word-as-list)) (length value) index) 0))))))))) 
   
-  (let* ([word (string-downcase word)]
-         [points 
-          (if (hash-has-key? exceptions word)
-              (hash-ref exceptions word)
-              (let* ([work (string-append "." word ".")]
-                     [points (make-vector (add1 (string-length work)) 0)]) 
-                (for ([i (string-length work)])
-                  (let ([tree pattern-tree])
-                    (for ([char (substring work i (string-length work))]
-                          #:break (not (hash-has-key? tree char)))
-                      (set! tree (hash-ref tree char))
-                      (when (hash-has-key? tree empty)
-                        (let ([point (hash-ref tree empty)])
-                          (for ([j (length point)])
-                            (vector-set! points (+ i j) (max (vector-ref points (+ i j)) (list-ref point j)))))))))
-                points))])
-    
-    ; make-zeroes controls minimum hyphenation distance from edge.
-    ; todo: dropping first 2 elements is needed for mysterious reasons to be documented later
-    (vector-drop (make-zeroes points) 2)))
+  (define max-value-pattern (apply map max matching-patterns))
+  (add-pattern-to-cache (cons word-with-dots max-value-pattern))
+  
+  ;; for point list,
+  ;; drop first two elements because they represent hyphenation weight
+  ;; before the starting "." and between "." and the first letter.
+  ;; drop last element because it represents hyphen after last "."
+  ;; after you drop these two, then each number corresponds to
+  ;; whether a hyphen goes after that letter.
+  (drop-right (drop max-value-pattern 2) 1))
 
 
 ;; helpful extension of splitf-at
 (define (splitf-at* xs split-test)
   
-  (define (trim items test-proc)
+  (define (trimf items test-proc)
     (dropf-right (dropf items test-proc) test-proc))
   
   (define (&splitf-at* xs [acc '()])
     (if (empty? xs) 
-        ;; reverse because accumulation is happening backward 
-        ;; (because I'm using cons to push latest match onto front of list)
-        (reverse acc)
-        (let-values ([(item rest) 
-                      ;; drop matching elements from front
-                      ;; then split on nonmatching 
-                      ;; = nonmatching item + other elements (which will start with matching)
-                      (splitf-at (dropf xs split-test) (compose1 not split-test))])
-          ;; recurse, and store new item in accumulator
-          (&splitf-at* rest (cons item acc)))))
+       ;; reverse because accumulation is happening backward 
+       ;; (because I'm using cons to push latest match onto front of list)
+       (reverse acc)
+       (let-values ([(item rest) 
+                     ;; drop matching elements from front
+                     ;; then split on nonmatching 
+                     ;; = nonmatching item + other elements (which will start with matching)
+                     (splitf-at (dropf xs split-test) (compose1 not split-test))])
+         ;; recurse, and store new item in accumulator
+         (&splitf-at* rest (cons item acc)))))
   
   ;; trim off elements matching split-test
-  (&splitf-at* (trim xs split-test)))
+  (&splitf-at* (trimf xs split-test)))
 
 
 ;; Find hyphenation points in a word. This is not quite synonymous with syllables.
-(define (word->hyphenation-points word [min-length default-min-length])
+(define (word->hyphenation-points word [min-length default-min-length] [min-ends-length default-min-ends-length])
+  
+  (define (add-no-hyphen-zone points)
+    ; points is a list corresponding to the letters of the word.
+    ; to create a no-hyphenation zone of length n, zero out the first n-1 points
+    ; and the last n points (because the last value in points is always superfluous)
+    (let* ([min-ends-length (or min-ends-length default-min-ends-length)]
+          [min-ends-length (min min-ends-length (length points))])
+      (define points-with-zeroes-on-left (append (make-list (sub1 min-ends-length) 0) (drop points (sub1 min-ends-length))))
+      (define points-with-zeroes-on-left-and-right (append (drop-right points-with-zeroes-on-left min-ends-length) (make-list min-ends-length 0)))
+      points-with-zeroes-on-left-and-right))
   
   (define (make-pieces word)
     (define word-dissected (flatten (for/list ([char word] 
-                                               [point (make-points word)])
+                                               [point (add-no-hyphen-zone (make-points word))])
                                       (if (even? point)
-                                          char ; even point denotes character
-                                          (cons char 'syllable))))) ; odd point denotes char + syllable
+                                         char ; even point denotes character
+                                         (cons char 'syllable))))) ; odd point denotes char + syllable
     (map list->string (splitf-at* word-dissected symbol?)))
   
   (if (and min-length (< (string-length word) min-length))
-      (list word)  
-      (make-pieces word)))
+     (list word)  
+     (make-pieces word)))
 
 
 ;; joiner contract allows char or string; this coerces to string.
@@ -158,41 +164,39 @@
       [(and (txexpr? x) (not (omit-txexpr x))) (cons (car x) (map loop (cdr x)))]
       [else x])))
 
-
 (define+provide+safe (hyphenate x [joiner default-joiner] 
-                                #:exceptions [extra-exceptions '()]  
-                                #:min-length [min-length default-min-length]
-                                #:omit-word [omit-word? (λ(x) #f)]
-                                #:omit-string [omit-string? (λ(x) #f)]
-                                #:omit-txexpr [omit-txexpr? (λ(x) #f)])
+                               #:exceptions [extra-exceptions '()]  
+                               #:min-length [min-length default-min-length]
+                               #:min-ends-length [min-ends-length default-min-ends-length]
+                               #:omit-word [omit-word? (λ(x) #f)]
+                               #:omit-string [omit-string? (λ(x) #f)]
+                               #:omit-txexpr [omit-txexpr? (λ(x) #f)])
   ((xexpr?) ((or/c char? string?) 
              #:exceptions (listof exception-word?) 
              #:min-length (or/c integer? #f)
              #:omit-word (string? . -> . any/c)
              #:omit-string (string? . -> . any/c)
-             #:omit-txexpr (txexpr? . -> . any/c)) . ->* . xexpr/c)
+             #:omit-txexpr (txexpr? . -> . any/c)
+             #:min-ends-length (or/c integer? #f)) . ->* . xexpr/c)
   
-  ;; set up module data
-  ;; todo?: change set! to parameterize
-  (set! exceptions (vector->exceptions (vector-append default-exceptions (list->vector extra-exceptions))))
-  (when (not pattern-tree) (set! pattern-tree (make-pattern-tree default-patterns)))
+  (initialize-patterns) ; reset everything each time hyphenate is called
+  (for-each add-exception extra-exceptions)
   
   (define joiner-string (joiner->string joiner))
   ;; todo?: connect this regexp pattern to the one used in word? predicate
   (define word-pattern #px"\\w+") ;; more restrictive than exception-word
   (define (insert-hyphens text)
     (regexp-replace* word-pattern text (λ(word) (if (not (omit-word? word)) 
-                                                    (string-join (word->hyphenation-points word min-length) joiner-string) 
-                                                    word))))
+                                                   (string-join (word->hyphenation-points word min-length min-ends-length) joiner-string) 
+                                                   word))))
   
   (apply-proc insert-hyphens x omit-string? omit-txexpr?))
 
 
-
 (define+provide+safe (unhyphenate x [joiner default-joiner] 
-                                  #:omit-word [omit-word? (λ(x) #f)]
-                                  #:omit-string [omit-string? (λ(x) #f)]
-                                  #:omit-txexpr [omit-txexpr? (λ(x) #f)])
+                                 #:omit-word [omit-word? (λ(x) #f)]
+                                 #:omit-string [omit-string? (λ(x) #f)]
+                                 #:omit-txexpr [omit-txexpr? (λ(x) #f)])
   ((xexpr/c) ((or/c char? string?) 
               #:omit-word (string? . -> . any/c)
               #:omit-string (string? . -> . any/c)
@@ -201,7 +205,15 @@
   (define word-pattern (pregexp (format "[\\w~a]+" joiner)))
   (define (remove-hyphens text)
     (regexp-replace* word-pattern text (λ(word) (if (not (omit-word? word)) 
-                                                    (string-replace word (joiner->string joiner) "") 
-                                                    word))))
+                                                   (string-replace word (joiner->string joiner) "") 
+                                                   word))))
   
   (apply-proc remove-hyphens x omit-string? omit-txexpr?))  
+
+
+(module+ main
+  (initialize-patterns)
+  (define t "supercalifragilisticexpialidocious") 
+  (hyphenate t "-"))
+
+

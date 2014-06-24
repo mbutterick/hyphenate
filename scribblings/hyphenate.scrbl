@@ -13,7 +13,7 @@
 
 @defmodule[#:multi (hyphenate (submod hyphenate safe))]
 
-A simple hyphenation engine that uses the Knuth–Liang hyphenation algorithm originally developed for TeX. This implementation is a port of Ned Batchelder's @link["http://nedbatchelder.com/code/modules/hyphenate.html"]{Python version}. I have added little to their work. Accordingly, I take little credit.
+A simple hyphenation engine that uses the Knuth–Liang hyphenation algorithm originally developed for TeX. I have added little to their work. Accordingly, I take little credit.
 
 I originally put together this module to handle hyphenation for my web-based book @link["http://practicaltypography.com"]{Butterick's Practical Typography} (which I made with Racket & Scribble). Though support for CSS-based hyphenation in web browsers is @link["http://caniuse.com/#search=hyphen"]{still iffy}, soft hyphens work reliably well. But putting them into the text manually is a drag. Thus a module was born.
 
@@ -40,6 +40,7 @@ Safe mode enables the function contracts documented below. Use safe mode by impo
 [joiner (or/c char? string?) (integer->char #x00AD)]
 [#:exceptions exceptions (listof string?) empty]
 [#:min-length length (or/c integer? false?) 5]
+[#:min-ends-length ends-length (or/c integer? false?) 2]
 [#:omit-word word-test (string? . -> . any/c) (λ(x) #f)]
 [#:omit-string string-test (string? . -> . any/c) (λ(x) #f)]
 [#:omit-txexpr txexpr-test (txexpr? . -> . any/c) (λ(x) #f)])
@@ -49,11 +50,21 @@ Hyphenate @racket[_xexpr] by calculating hyphenation points and inserting @racke
 @margin-note{The REPL displays a soft hyphen as @code{\u00AD}. But in ordinary use, you'll only see a soft hyphen when it appears at the end of a line or page as part of a hyphenated word. Otherwise it's not displayed. In most of the examples here, I use a standard hyphen for clarity (by adding @code{#\-} as an argument).}
 
 @examples[#:eval my-eval
-     (hyphenate "ergo polymorphic")
-     (hyphenate "ergo polymorphic" #\-)
-     (hyphenate "ergo polymorphic" #:min-length 13)
-     (hyphenate "ergo polymorphic" #:min-length #f)
+     (hyphenate "ergo polymorphism")
+     (hyphenate "ergo polymorphism" #\-)
+     (hyphenate "ergo polymorphism" #:min-length 13)
+     (hyphenate "ergo polymorphism" #:min-length #f)
    ]
+
+The @racket[#:min-ends-length] keyword argument sets a minimum distance between a potential hyphen and either end of the word. The default is 2 characters. Larger values will reduce hyphens, but also prevent small word breaks. This value will override a smaller @racket[#:min-length] value.
+
+@examples[#:eval my-eval
+     (hyphenate "ergo polymorphism" #\-)
+     (hyphenate "ergo polymorphism" #\- #:min-ends-length #f)
+     (hyphenate "ergo polymorphism" #\- #:min-ends-length 5)
+     (code:comment @#,t{Words won't be hyphenated becase of large #:min-ends-length})
+     (hyphenate "ergo polymorphism" #\- #:min-length #f #:min-ends-length 15)
+   ] 
 
 Because the hyphenation is based on an algorithm rather than a dictionary, it makes good guesses with unusual words:
 
@@ -66,9 +77,9 @@ Because the hyphenation is based on an algorithm rather than a dictionary, it ma
 Using the @racket[#:exceptions] keyword, you can pass hyphenation exceptions as a list of words with hyphenation points marked with regular hyphens (@racket["-"]). If an exception word contains no hyphens, that word will never be hyphenated.
 
 @examples[#:eval my-eval
-     (hyphenate "polymorphic" #\-)
-     (hyphenate "polymorphic" #\- #:exceptions '("polymo-rphic"))
-     (hyphenate "polymorphic" #\- #:exceptions '("polymorphic"))
+     (hyphenate "polymorphism" #\-)
+     (hyphenate "polymorphism" #\- #:exceptions '("polymo-rphism"))
+     (hyphenate "polymorphism" #\- #:exceptions '("polymorphism"))
    ]
 
 Knuth & Liang were sufficiently confident about their algorithm that they originally released it with only 14 exceptions: @italic{associate[s], declination, obligatory, philanthropic, present[s], project[s], reciprocity, recognizance, reformation, retribution}, and @italic{table}. Admirable bravado, but it's not hard to discover others that need adjustment.
@@ -79,7 +90,7 @@ Knuth & Liang were sufficiently confident about their algorithm that they origin
      #:exceptions '("col-umns" "sign-age" "law-yers")) 
    ]
 
-Overall, my impression is that the Knuth–Liang algorithm is more likely to miss legitimate hyphenation points (i.e., generate false negatives) than create erroneous hyphenation points (i.e., false positives). This is good policy. Perfect hyphenation — that is, hyphenation that represents an exact linguistic syllabification of each word — is superfluous for typesetting. Hyphenation simply seeks to mark possible line-break and page-break locations for whatever layout engine is drawing the text. The ultimate goal is to permit more even text flow. Like horseshoes and hand grenades, close is good enough. And a word wrongly hyphenated is more likely to be noticed by a reader than a word inefficiently hyphenated.
+The Knuth–Liang algorithm is designed to omit legitimate hyphenation points (i.e., generate false negatives) more often than it creates erroneous hyphenation points (i.e., false positives). This is good policy. Perfect hyphenation — that is, hyphenation that represents an exact linguistic syllabification of each word — is superfluous for typesetting. Hyphenation simply seeks to mark possible line-break and page-break locations for whatever layout engine is drawing the text. The ultimate goal is to permit more even text flow. Like horseshoes and hand grenades, close is good enough. And a word wrongly hyphenated is more likely to be noticed by a reader than a word inefficiently hyphenated.
 
 For this reason, certain words can't be hyphenated algorithmically, because the correct hyphenation depends on meaning, not merely on spelling. For instance:
 
