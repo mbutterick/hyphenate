@@ -23,7 +23,8 @@
 
 ;; module default values
 (define default-min-length 5)
-(define default-min-ends-length 2)
+(define default-min-left-length 2)
+(define default-min-right-length 2)
 (define default-joiner #\u00AD)
 
 (define (add-pattern-to-cache pat)
@@ -127,16 +128,18 @@
 
 
 ;; Find hyphenation points in a word. This is not quite synonymous with syllables.
-(define (word->hyphenation-points word [min-length default-min-length] [min-ends-length default-min-ends-length])
+(define (word->hyphenation-points word [min-length default-min-length] 
+                                  [min-left-length default-min-left-length]
+                                  [min-right-length default-min-right-length])
   
   (define (add-no-hyphen-zone points)
     ; points is a list corresponding to the letters of the word.
     ; to create a no-hyphenation zone of length n, zero out the first n-1 points
     ; and the last n points (because the last value in points is always superfluous)
-    (let* ([min-ends-length (or min-ends-length default-min-ends-length)]
-          [min-ends-length (min min-ends-length (length points))])
-      (define points-with-zeroes-on-left (append (make-list (sub1 min-ends-length) 0) (drop points (sub1 min-ends-length))))
-      (define points-with-zeroes-on-left-and-right (append (drop-right points-with-zeroes-on-left min-ends-length) (make-list min-ends-length 0)))
+    (let* ([min-left-length (min (or min-left-length default-min-left-length) (length points))]
+           [min-right-length (min (or min-right-length default-min-right-length) (length points))])
+      (define points-with-zeroes-on-left (append (make-list (sub1 min-left-length) 0) (drop points (sub1 min-left-length))))
+      (define points-with-zeroes-on-left-and-right (append (drop-right points-with-zeroes-on-left min-right-length) (make-list min-right-length 0)))
       points-with-zeroes-on-left-and-right))
   
   (define (make-pieces word)
@@ -167,7 +170,8 @@
 (define+provide+safe (hyphenate x [joiner default-joiner] 
                                #:exceptions [extra-exceptions '()]  
                                #:min-length [min-length default-min-length]
-                               #:min-ends-length [min-ends-length default-min-ends-length]
+                               #:min-left-length [min-left-length default-min-left-length]
+                               #:min-right-length [min-right-length default-min-right-length]
                                #:omit-word [omit-word? (λ(x) #f)]
                                #:omit-string [omit-string? (λ(x) #f)]
                                #:omit-txexpr [omit-txexpr? (λ(x) #f)])
@@ -177,7 +181,8 @@
              #:omit-word (string? . -> . any/c)
              #:omit-string (string? . -> . any/c)
              #:omit-txexpr (txexpr? . -> . any/c)
-             #:min-ends-length (or/c integer? #f)) . ->* . xexpr/c)
+             #:min-left-length (or/c (and/c integer? positive?) #f)
+             #:min-right-length (or/c (and/c integer? positive?) #f)) . ->* . xexpr/c)
   
   (initialize-patterns) ; reset everything each time hyphenate is called
   (for-each add-exception extra-exceptions)
@@ -187,7 +192,7 @@
   (define word-pattern #px"\\w+") ;; more restrictive than exception-word
   (define (insert-hyphens text)
     (regexp-replace* word-pattern text (λ(word) (if (not (omit-word? word)) 
-                                                   (string-join (word->hyphenation-points word min-length min-ends-length) joiner-string) 
+                                                   (string-join (word->hyphenation-points word min-length min-left-length min-right-length) joiner-string) 
                                                    word))))
   
   (apply-proc insert-hyphens x omit-string? omit-txexpr?))

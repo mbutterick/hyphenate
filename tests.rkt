@@ -59,6 +59,7 @@
 (check-equal? (unhyphenate '(p "cir-cu-lar poly-mor-phism" "cir-cu-lar poly-mor-phisms") #\- #:omit-string (λ(x) (regexp-match #rx"s$" x))) 
               '(p "circular polymorphism" "cir-cu-lar poly-mor-phisms"))
 
-(check-equal? (hyphenate "polymorphism" #\- #:min-ends-length 5) "polymor-phism")
-(check-equal? (hyphenate "polymorphism" #\- #:min-ends-length 7) "polymorphism")
+(check-equal? (hyphenate "polymorphism" #\- #:min-left-length 5 #:min-right-length 5) "polymor-phism")
+(check-equal? (hyphenate "polymorphism" #\- #:min-left-length 3 #:min-right-length 7) "poly-morphism")
+(check-equal? (hyphenate "polymorphism" #\- #:min-left-length 7 #:min-right-length 7) "polymorphism")
 (check-equal? (hyphenate "polymorphism" #\* #:exceptions '("polymo-rphism")) "polymo*rphism")

@@ -40,7 +40,8 @@ Safe mode enables the function contracts documented below. Use safe mode by impo
 [joiner (or/c char? string?) (integer->char #x00AD)]
 [#:exceptions exceptions (listof string?) empty]
 [#:min-length length (or/c integer? false?) 5]
-[#:min-ends-length ends-length (or/c integer? false?) 2]
+[#:min-left-length left-length (or/c (and/c integer? positive?) #f) 2]
+[#:min-right-length right-length (or/c (and/c integer? positive?) #f) 2]
 [#:omit-word word-test (string? . -> . any/c) (λ(x) #f)]
 [#:omit-string string-test (string? . -> . any/c) (λ(x) #f)]
 [#:omit-txexpr txexpr-test (txexpr? . -> . any/c) (λ(x) #f)])
@@ -56,14 +57,15 @@ Hyphenate @racket[_xexpr] by calculating hyphenation points and inserting @racke
      (hyphenate "ergo polymorphism" #:min-length #f)
    ]
 
-The @racket[#:min-ends-length] keyword argument sets a minimum distance between a potential hyphen and either end of the word. The default is 2 characters. Larger values will reduce hyphens, but also prevent small word breaks. This value will override a smaller @racket[#:min-length] value.
+The @racket[#:min-left-length] and @racket[#:min-right-length] keyword arguments set the minimum distance between a potential hyphen and the left or right ends of the word. The default is 2 characters. Larger values will reduce hyphens, but also prevent small words from breaking. These values will override a smaller @racket[#:min-length] value.
 
 @examples[#:eval my-eval
      (hyphenate "ergo polymorphism" #\-)
-     (hyphenate "ergo polymorphism" #\- #:min-ends-length #f)
-     (hyphenate "ergo polymorphism" #\- #:min-ends-length 5)
-     (code:comment @#,t{Words won't be hyphenated becase of large #:min-ends-length})
-     (hyphenate "ergo polymorphism" #\- #:min-length #f #:min-ends-length 15)
+     (hyphenate "ergo polymorphism" #\- #:min-left-length #f)
+     (hyphenate "ergo polymorphism" #\- #:min-length 2 #:min-left-length 5)
+     (hyphenate "ergo polymorphism" #\- #:min-right-length 6)
+     (code:comment @#,t{Next words won't be hyphenated becase of large #:min-left-length})
+     (hyphenate "ergo polymorphism" #\- #:min-length #f #:min-left-length 15)
    ] 
 
 Because the hyphenation is based on an algorithm rather than a dictionary, it makes good guesses with unusual words:
