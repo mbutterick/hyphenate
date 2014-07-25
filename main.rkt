@@ -105,12 +105,12 @@
 
 
 ;; helpful extension of splitf-at
-(define (splitf-at* xs split-test)
+(define (filter-split xs split-test)
   
   (define (trimf items test-proc)
     (dropf-right (dropf items test-proc) test-proc))
   
-  (define (&splitf-at* xs [acc '()])
+  (define (&filter-split xs [acc '()])
     (if (empty? xs) 
        ;; reverse because accumulation is happening backward 
        ;; (because I'm using cons to push latest match onto front of list)
@@ -121,10 +121,10 @@
                      ;; = nonmatching item + other elements (which will start with matching)
                      (splitf-at (dropf xs split-test) (compose1 not split-test))])
          ;; recurse, and store new item in accumulator
-         (&splitf-at* rest (cons item acc)))))
+         (&filter-split rest (cons item acc)))))
   
   ;; trim off elements matching split-test
-  (&splitf-at* (trimf xs split-test)))
+  (&filter-split (trimf xs split-test)))
 
 
 ;; Find hyphenation points in a word. This is not quite synonymous with syllables.
@@ -148,7 +148,7 @@
                                       (if (even? point)
                                          char ; even point denotes character
                                          (cons char 'syllable))))) ; odd point denotes char + syllable
-    (map list->string (splitf-at* word-dissected symbol?)))
+    (map list->string (filter-split word-dissected symbol?)))
   
   (if (and min-length (< (string-length word) min-length))
      (list word)  
