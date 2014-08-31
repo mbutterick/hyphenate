@@ -59,7 +59,7 @@
            [pat (map (λ(i) (or (string->number i) i)) pat)] ; convert numbers
            [pat (if (string? (car pat)) (cons 0 pat) pat)] ; add zeroes to front where needed
            [pat (if (string? (car (reverse pat))) (reverse (cons 0 (reverse pat))) pat)]) ; and back
-      (flatten (for/list ([i (length pat)])
+      (flatten (for/list ([i (in-range (length pat))])
                  (define current (list-ref pat i))
                  (if (= i (sub1 (length pat))) 
                     current
@@ -85,7 +85,7 @@
        (let ([word-as-list (string->list word-with-dots)])
          (cons (make-list (add1 (length word-as-list)) 0) ;; ensures there's at least one (null) element in return value
               (filter-not void?
-                         (for*/list ([len (length word-as-list)] [index (- (length word-as-list) len)])
+                         (for*/list ([len (in-range (length word-as-list))] [index (in-range (- (length word-as-list) len))])
                            (define substring (list->string (take (drop word-as-list index) (add1 len))))
                            (when (hash-has-key? patterns substring)
                              (define value (hash-ref patterns substring))
@@ -143,8 +143,8 @@
       points-with-zeroes-on-left-and-right))
   
   (define (make-pieces word)
-    (define word-dissected (flatten (for/list ([char word] 
-                                               [point (add-no-hyphen-zone (make-points word))])
+    (define word-dissected (flatten (for/list ([char (in-string word)] 
+                                               [point (in-list (add-no-hyphen-zone (make-points word)))])
                                       (if (even? point)
                                          char ; even point denotes character
                                          (cons char 'syllable))))) ; odd point denotes char + syllable
