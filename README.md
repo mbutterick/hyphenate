@@ -17,4 +17,4 @@ And enjoy:
     
     > "Hy-phen-ation al-go-rithm"
     
-Full docs are installed with the package. You can also [read the docs here](http://mbutterick.github.io/hyphenate/doc/).
+Full docs are installed with the package. You can also [read the docs here](http://pkg-build.racket-lang.org/doc/hyphenate).
