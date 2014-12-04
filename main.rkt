@@ -48,6 +48,7 @@
 (define (exception-word? x)
   (if (regexp-match #px"^[\\w-]+$" x) #t #f))
 
+(define (exception-words? xs) (and (list? xs) (andmap exception-word? xs)))
 
 (define (string->hashpair pat)
   (define boundary-name ".")
@@ -176,7 +177,7 @@
                                #:omit-string [omit-string? (λ(x) #f)]
                                #:omit-txexpr [omit-txexpr? (λ(x) #f)])
   ((xexpr?) ((or/c char? string?) 
-             #:exceptions (listof exception-word?) 
+             #:exceptions exception-words? 
              #:min-length (or/c integer? #f)
              #:omit-word (string? . -> . any/c)
              #:omit-string (string? . -> . any/c)
