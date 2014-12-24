@@ -1,7 +1,7 @@
 #lang racket/base
 (require (for-syntax racket/base))
 (require racket/string racket/list racket/bool)
-(require "patterns.rkt" "exceptions.rkt" txexpr xml)
+(require "patterns-hashed.rkt" "exceptions.rkt" txexpr xml)
 
 (module+ safe (require racket/contract))
 
@@ -35,7 +35,8 @@
     (set! pattern-cache (make-hash))
     (for-each (compose1 add-exception symbol->string) default-exceptions))
   (when (not patterns)
-    (set! patterns (make-hash (map (compose1 string->hashpair symbol->string) default-patterns)))))
+    ;(set! patterns (make-hash (map (compose1 string->hashpair symbol->string) default-patterns))))
+    (set! patterns hashed-patterns)))
 
 ;; Convert the hyphenated pattern into a point array for use later.
 (define (add-exception exception) 
@@ -56,12 +57,11 @@
   ;; first convert the pattern to a list of alternating letters and numbers.
   ;; insert zeroes where there isn't a number in the pattern.
   (define new-pat
-    (let* ([pat (map (λ(i) (format "~a" i)) (string->list pat))] ; convert to list
+    (let* ([pat (regexp-match* #rx"." pat)] ; convert to list
            [pat (map (λ(i) (or (string->number i) i)) pat)] ; convert numbers
            [pat (if (string? (car pat)) (cons 0 pat) pat)] ; add zeroes to front where needed
            [pat (if (string? (car (reverse pat))) (reverse (cons 0 (reverse pat))) pat)]) ; and back
-      (flatten (for/list ([i (in-range (length pat))])
-                 (define current (list-ref pat i))
+      (flatten (for/list ([(current i) (in-indexed pat)])
                  (if (= i (sub1 (length pat))) 
                     current
                     (let ([next (list-ref pat (add1 i))])
