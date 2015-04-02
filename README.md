@@ -1,4 +1,4 @@
-hyphenate
+hyphenate [![Build Status](https://travis-ci.org/mbutterick/hyphenate.svg?branch=master)](https://travis-ci.org/mbutterick/hyphenate)
 ---------
 
 Racket implementation of the Knuth–Liang hyphenation algorithm.
