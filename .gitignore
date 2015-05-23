@@ -16,3 +16,7 @@ Icon
 scribblings/hyphenate.html
 scribblings/*.css
 scribblings/*.js
+
+hyphenate/scribblings/hyphenate.html
+hyphenate/scribblings/*.css
+hyphenate/scribblings/*.js
