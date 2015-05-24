@@ -17,7 +17,7 @@ A simple hyphenation engine that uses the Knuth–Liang hyphenation algorithm or
 
 I originally put together this module to handle hyphenation for my web-based book @link["http://practicaltypography.com"]{Butterick's Practical Typography} (which I made with Racket & Scribble). Though support for CSS-based hyphenation in web browsers is @link["http://caniuse.com/#search=hyphen"]{still iffy}, soft hyphens work reliably well. But putting them into the text manually is a drag. Thus a module was born.
 
-I thank Benjamin Greenman for his suggestions on the typed version. 
+I thank Benjamin Greenman and Alexander Knauth for helpful suggestions on the typed version. 
 
 @section{Installation}
 
@@ -36,6 +36,8 @@ Fast mode is the default, which you get by importing the module in the usual way
 Safe mode enables the function contracts documented below. Use safe mode by importing the module as @code{(require (submod hyphenate safe))}.
 
 The typed version is invoked as @code{(require typed/hyphenate)}. The typed version is implemented ``natively'' in the sense that it is compiled separately with type annotations. It is not a @racket[require/typed] wrapper around the untyped code. This avoids the contract barrier that is otherwise automatically imposed between typed and untyped code.
+
+@margin-note{I explain more about this cross-compiling technique in @link["http://unitscale.com/mb/technique/dual-typed-untyped-library.html"]{Making a dual typed / untyped Racket library}.}
 
 
 @section{Interface}
