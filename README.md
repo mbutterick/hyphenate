@@ -7,9 +7,17 @@ Install from the command line like so:
 
     raco pkg install hyphenate
 
-Then require it in your Racket file:
+Then require it in your Racket file, in standard mode:
 
     (require hyphenate)
+    
+In safe mode (with contracts):
+
+    (require (submod hyphenate safe))
+
+Or in typed mode:
+
+    (require typed/hyphenate)
     
 And enjoy:
 
