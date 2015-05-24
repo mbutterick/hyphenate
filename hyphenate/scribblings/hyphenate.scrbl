@@ -17,6 +17,8 @@ A simple hyphenation engine that uses the Knuth–Liang hyphenation algorithm or
 
 I originally put together this module to handle hyphenation for my web-based book @link["http://practicaltypography.com"]{Butterick's Practical Typography} (which I made with Racket & Scribble). Though support for CSS-based hyphenation in web browsers is @link["http://caniuse.com/#search=hyphen"]{still iffy}, soft hyphens work reliably well. But putting them into the text manually is a drag. Thus a module was born.
 
+I thank Benjamin Greenman for his suggestions on the typed version. 
+
 @section{Installation}
 
 At the command line:
