@@ -3,7 +3,7 @@
 @(require scribble/eval (for-label txexpr racket hyphenate xml))
 
 @(define my-eval (make-base-eval))
-@(my-eval `(require (submod txexpr safe) (submod hyphenate safe) xml))
+@(my-eval `(require txexpr hyphenate xml))
 
 
 @title{Hyphenate}
@@ -11,7 +11,7 @@
 @author[(author+email "Matthew Butterick" "mb@mbtype.com")]
 
 
-@defmodule[#:multi (hyphenate (submod hyphenate safe))]
+@defmodule[#:multi (hyphenate (submod hyphenate safe) typed/hyphenate)]
 
 A simple hyphenation engine that uses the Knuth–Liang hyphenation algorithm originally developed for TeX. I have added little to their work. Accordingly, I take little credit.
 
@@ -27,10 +27,14 @@ After that, you can update the package like so:
 
 @section{Importing the module}
 
+The module can be invoked three ways: fast, safe, and typed. 
 
-The module operates in two modes: fast and safe. Fast mode is the default, which you get by importing the module in the usual way: @code{(require hyphenate)}. 
+Fast mode is the default, which you get by importing the module in the usual way: @code{(require hyphenate)}. 
 
 Safe mode enables the function contracts documented below. Use safe mode by importing the module as @code{(require (submod hyphenate safe))}.
+
+The typed version is invoked as @code{(require typed/hyphenate)}. The typed version is implemented ``natively'' in the sense that it is compiled separately with type annotations. It is not a @racket[require/typed] wrapper around the untyped code. This avoids the contract barrier that is otherwise automatically imposed between typed and untyped code.
+
 
 @section{Interface}
 
@@ -141,7 +145,7 @@ Similarly, you can use the @racket[#:omit-word] argument to avoid words that mat
      (hyphenate "Brennan Huff likes fancy sauce" #\-) 
      (define capitalized? (λ(word) (let ([letter (substring word 0 1)])
  (equal? letter (string-upcase letter)))))
-     (hyphenate "Brennan Huff likes fancy sauce" #:omit-word capitalized? #\-) 
+     (hyphenate "Brennan Huff likes fancy sauce" #\- #:omit-word capitalized?) 
    ]
    
 Sometimes you need @racket[#:omit-word] to prevent unintended consequences. For instance, if you're using ligatures in CSS, certain groups of characters (fi, fl, ffi, et al.) will be replaced by a single glyph. That looks snazzy, but adding soft hyphens between any of these pairs will defeat the ligature substitution, creating inconsistent results. With @racket[#:omit-word], you can skip these words:
@@ -153,7 +157,7 @@ Sometimes you need @racket[#:omit-word] to prevent unintended consequences. For 
 (define (ligs? word)
   (ormap (λ(lig) (regexp-match lig word)) 
   '("ff" "fi" "fl" "ffi" "ffl")))
-(hyphenate "Hufflepuff golfing final on Tuesday" #:omit-word ligs? #\-) 
+(hyphenate "Hufflepuff golfing final on Tuesday" #\- #:omit-word ligs?) 
 ]
 
 

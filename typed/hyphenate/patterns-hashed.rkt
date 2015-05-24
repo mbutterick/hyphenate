@@ -1,7 +1,8 @@
-#lang racket/base
+#lang typed/racket/base
+(require "core-predicates.rkt")
 (provide hashed-patterns)
 
-(define hashed-patterns
+(define: hashed-patterns : Pattern-Hash
   '#hash(("ripl" . (0 0 2 0 0))
        ("erent" . (0 0 3 0 0 0))
        ("jap" . (0 0 4 0))

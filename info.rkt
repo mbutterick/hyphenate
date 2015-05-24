@@ -1,6 +1,5 @@
 #lang info
-(define collection "hyphenate")
-(define scribblings '(("scribblings/hyphenate.scrbl" ())))
-(define compile-omit-paths '("tests.rkt"))
-(define deps '("base" "txexpr"))
-(define build-deps '("scribble-lib" "racket-doc"))
+(define collection 'multi)
+(define deps '("base" "sugar" "txexpr" "typed-racket-lib" "typed-racket-more" "rackunit-lib"))
+(define build-deps '("scribble-lib" "racket-doc" "typed-racket-doc"))
+(define test-omit-paths '("typed/hyphenate/patterns-hashed.rkt"))

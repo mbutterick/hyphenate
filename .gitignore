@@ -13,10 +13,6 @@ Icon
 # Files that might appear on external disk
 .Spotlight-V100
 .Trashes
-scribblings/hyphenate.html
-scribblings/*.css
-scribblings/*.js
-
 hyphenate/scribblings/hyphenate.html
 hyphenate/scribblings/*.css
 hyphenate/scribblings/*.js

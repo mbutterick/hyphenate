@@ -1,6 +1,8 @@
-#lang racket/base
+#lang typed/racket/base
 
-(provide default-patterns)
+;; These patterns aren't used by the `hyphenate` program.
+;; Instead it relies on the patterns in patterns-hashed, which are faster to load.
+;; These are here for reference, preservation, etc.
 
 (define default-patterns 
   ; Knuth and Liang's original hyphenation patterns from classic TeX.
