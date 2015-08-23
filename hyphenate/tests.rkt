@@ -4,32 +4,32 @@
 (define-syntax (eval-as-untyped stx)
   (syntax-case stx ()
     [(_ exprs ...)
-     (with-syntax ([sym (generate-temporary)]) 
-       #'(begin
-           (module sym typed/racket/base/no-check
-             (require rackunit "main.rkt" txexpr)
-             exprs ...)
-           (require 'sym)))]))
+     (with-syntax ([sym (syntax-e (generate-temporary))]) 
+       (datum->syntax stx `(begin
+                             (module ,(syntax->datum #'sym) typed/racket/base/no-check
+                               (require rackunit "main.rkt" txexpr)
+                               ,@(syntax->datum #'(exprs ...)))
+                             (require ',(syntax->datum #'sym))) stx))]))
 
 (define-syntax (eval-as-untyped-safe stx)
   (syntax-case stx ()
     [(_ exprs ...)
-     (with-syntax ([sym (generate-temporary)]) 
-       #'(begin
-           (module sym typed/racket/base/no-check
-             (require rackunit (submod "main.rkt" safe) txexpr)
-             exprs ...)
-           (require 'sym)))]))
+     (with-syntax ([sym (syntax-e (generate-temporary))]) 
+       (datum->syntax stx `(begin
+                             (module ,(syntax->datum #'sym) typed/racket/base/no-check
+                               (require rackunit (submod "main.rkt" safe) txexpr)
+                               ,@(syntax->datum #'(exprs ...)))
+                             (require ',(syntax->datum #'sym))) stx))]))
 
 (define-syntax (eval-as-typed stx)
   (syntax-case stx ()
     [(_ exprs ...)
-     (with-syntax ([sym (generate-temporary)]) 
-       #'(begin
-           (module sym typed/racket
-             (require typed/rackunit "../typed/hyphenate/main.rkt" typed/txexpr)
-             exprs ...)
-           (require 'sym)))]))
+     (with-syntax ([sym (syntax-e (generate-temporary))]) 
+       (datum->syntax stx `(begin
+                             (module ,(syntax->datum #'sym) typed/racket
+                               (require typed/rackunit "../typed/hyphenate/main.rkt" typed/txexpr)
+                               ,@(syntax->datum #'(exprs ...)))
+                             (require ',(syntax->datum #'sym))) stx))]))
 
 (define-syntax-rule (eval-as-typed-and-untyped exprs ...)
   (begin
