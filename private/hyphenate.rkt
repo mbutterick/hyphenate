@@ -1,7 +1,7 @@
 #lang racket/base
 (require txexpr (only-in xml xexpr/c) sugar/define racket/string racket/list)
 (require "params.rkt")
-(provide hyphenate unhyphenate word->hyphenation-points exception-word? exception-words?)
+(provide hyphenate unhyphenate word->hyphenation-points exception-word? exception-words? convert-exception-word string->hashpair)
 
 ;; module data, define now but set! them later (because they're potentially big & slow)
 
@@ -63,17 +63,16 @@
   ;; then slice out the string & numerical parts to be a key / value pair.
   (define value (filter exact-nonnegative-integer? new-pat))
   (define key (filter string? new-pat))
-  (cons (apply string-append key) value))
+  (list (apply string-append key) value))
 
 (define (make-points word)
   ;; walk through all the substrings and see if there's a matching pattern.
   ;; if so, pad it out to full length (so we can (apply map max ...) later on)
   (define word-with-dots (format ".~a." (string-downcase word)))
-  (report* word-with-dots (current-exception-patterns))
   (define matching-patterns 
     (cond
       [(hash-has-key? (current-word-cache) word-with-dots) (list (hash-ref (current-word-cache) word-with-dots))]
-      [(report (hash-has-key? (current-exception-patterns) word-with-dots)) (list (hash-ref (current-exception-patterns) word-with-dots))]
+      [(hash-has-key? (current-exceptions) word-with-dots) (list (hash-ref (current-exceptions) word-with-dots))]
       
       [else
        (let ([word-as-list (string->list word-with-dots)])
@@ -154,7 +153,6 @@
       [else x])))
 
 (require sugar/debug)
-(define current-exception-patterns (make-parameter null))
 (define+provide+safe (hyphenate x [joiner default-joiner] 
                                 #:exceptions [extra-exceptions empty]  
                                 #:min-length [min-length default-min-length]
@@ -171,7 +169,6 @@
     #:omit-txexpr (txexpr? . -> . any/c)
     #:min-left-length (or/c (and/c integer? positive?) #f)
     #:min-right-length (or/c (and/c integer? positive?) #f)) . ->* . xexpr/c)
-  (current-exception-patterns (apply hash (append-map convert-exception-word (report (current-exceptions)))))
   ;; todo?: connect this regexp pattern to the one used in word? predicate
   (define word-pattern #px"\\w+") ;; more restrictive than exception-word
   (define (replacer word . words)
@@ -203,7 +200,7 @@
   (apply-proc remove-hyphens x omit-string? omit-txexpr?))  
 
 
-(module+ main
+#;(module+ main
   (report (current-word-cache))
   (hyphenate "snowman" "-")
   (parameterize ([current-word-cache (make-hash)]

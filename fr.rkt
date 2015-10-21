@@ -1,5 +1,5 @@
 #lang racket
-(require (prefix-in core: "private/hyphenate.rkt") "private/params.rkt" "us/patterns.rkt" "us/exceptions.rkt")
+(require (prefix-in core: "private/hyphenate.rkt") "private/params.rkt" "fr/patterns.rkt" "us/exceptions.rkt")
 (provide hyphenate unhyphenate (all-from-out "private/params.rkt"))
 
 (define (hyphenate x)
