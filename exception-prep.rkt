@@ -13,6 +13,6 @@
     (with-syntax ([str (port->string in)])
       (strip-context
        #'(module anything racket/base
-           (require racket/string racket/list hyphenate/private/hyphenate)
+           (require racket/string racket/list hyphenate/core)
            (provide exceptions)
            (define exceptions (apply hash (append-map convert-exception-word (string-split str)))))))))
