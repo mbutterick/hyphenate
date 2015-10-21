@@ -1,12 +1,9 @@
 #lang racket/base
-(require sugar/include txexpr  (only-in xml xexpr/c))
-(require sugar/define racket/string racket/list racket/bool)
-(require "patterns-hashed.rkt" "exceptions.rkt")
-(provide hyphenate unhyphenate reset-patterns word->hyphenation-points exception-word? exception-words?)
+(require txexpr (only-in xml xexpr/c) sugar/define racket/string racket/list)
+(require "params.rkt")
+(provide hyphenate unhyphenate word->hyphenation-points exception-word? exception-words?)
 
 ;; module data, define now but set! them later (because they're potentially big & slow)
-(define patterns (make-hash))
-(define pattern-cache (make-hash))
 
 ;; module default values
 (define default-min-length 5)
@@ -14,38 +11,23 @@
 (define default-min-right-length 2)
 (define default-joiner #\u00AD)
 
-(define (add-pattern-to-cache pat)
-  (hash-set! pattern-cache (car pat) (cdr pat)))
+(define (cache-word pat)
+  (hash-set! (current-word-cache) (car pat) (cdr pat)))
 
 ;; Convert the hyphenated pattern into a point array for use later.
-(define (add-exception exception)
+(define (convert-exception-word exception)
   (define (make-key x)
     (format ".~a." (string-replace x "-" "")))
   (define (make-value x)
     `(0 ,@(map (λ(x) (if (equal? x "-") 1 0)) (regexp-split #px"[a-z]" x)) 0))
-  (add-pattern-to-cache (cons (make-key exception) (make-value exception)))
-  (void))
+  (list (make-key exception) (make-value exception)))
 
 (define-syntax-rule (hash-empty? h) (zero? (hash-count h)))
-
-(define (initialize-patterns)
-  (when (hash-empty? pattern-cache)
-    (for-each add-exception default-exceptions))
-  (when (hash-empty? patterns)
-    (set! patterns hashed-patterns)))
-
-(define+provide+safe (reset-patterns)
-  (-> void?)
-  (define blank (make-hash))
-  (set! pattern-cache (hash-copy blank))
-  (set! patterns (hash-copy blank))
-  (initialize-patterns))
 
 ;; An exception-word is a string of word characters or hyphens.
 (define+provide+safe (exception-word? x)
   (string? . -> . boolean?)
   (and (string? x) (regexp-match #px"^[\\w-]+$" x) #t))
-
 
 (define (exception-words? xs) 
   (and (list? xs) (andmap exception-word? xs)))
@@ -87,9 +69,12 @@
   ;; walk through all the substrings and see if there's a matching pattern.
   ;; if so, pad it out to full length (so we can (apply map max ...) later on)
   (define word-with-dots (format ".~a." (string-downcase word)))
+  (report* word-with-dots (current-exception-patterns))
   (define matching-patterns 
     (cond
-      [(hash-has-key? pattern-cache word-with-dots) (list (hash-ref pattern-cache word-with-dots))]
+      [(hash-has-key? (current-word-cache) word-with-dots) (list (hash-ref (current-word-cache) word-with-dots))]
+      [(report (hash-has-key? (current-exception-patterns) word-with-dots)) (list (hash-ref (current-exception-patterns) word-with-dots))]
+      
       [else
        (let ([word-as-list (string->list word-with-dots)])
          ;; ensures there's at least one (null) element in return value
@@ -99,8 +84,8 @@
                               [index (in-range (- (length word-as-list) len))])
                     (define substring (list->string (take (drop word-as-list index) (add1 len))))
                     (cond
-                      [(hash-has-key? patterns substring)
-                       (define value (hash-ref patterns substring))
+                      [(hash-has-key? (current-patterns) substring)
+                       (define value (hash-ref (current-patterns) substring))
                        ;; put together head padding + value + tail padding
                        (define pattern-to-add (append (make-list index 0) value (make-list (- (add1 (length word-as-list)) (length value) index) 0)))
                        (cons pattern-to-add acc)]
@@ -113,7 +98,7 @@
               (apply-map-max (map cdr xss)))))
   
   (define max-value-pattern (apply-map-max matching-patterns))
-  (add-pattern-to-cache (cons word-with-dots max-value-pattern))
+  (cache-word (cons word-with-dots max-value-pattern))
   
   ;; for point list,
   ;; drop first two elements because they represent hyphenation weight
@@ -126,9 +111,9 @@
 
 ;; Find hyphenation points in a word. This is not quite synonymous with syllables.
 (define+provide+safe (word->hyphenation-points word 
-                                  [min-length default-min-length] 
-                                  [min-left-length default-min-left-length] 
-                                  [min-right-length default-min-right-length])
+                                               [min-length default-min-length] 
+                                               [min-left-length default-min-left-length] 
+                                               [min-right-length default-min-right-length])
   ((string?) ((or/c #f exact-nonnegative-integer?)(or/c #f exact-nonnegative-integer?)(or/c #f exact-nonnegative-integer?)) . ->* . (listof string?))
   (define (add-no-hyphen-zone points)
     ;; points is a list corresponding to the letters of the word.
@@ -168,7 +153,8 @@
        (make-txexpr (get-tag x) (get-attrs x) (map loop (get-elements x)))]
       [else x])))
 
-
+(require sugar/debug)
+(define current-exception-patterns (make-parameter null))
 (define+provide+safe (hyphenate x [joiner default-joiner] 
                                 #:exceptions [extra-exceptions empty]  
                                 #:min-length [min-length default-min-length]
@@ -179,15 +165,13 @@
                                 #:omit-txexpr [omit-txexpr? (λ(x) #f)])
   ((xexpr?) 
    ((or/c char? string?) 
-    #:exceptions exception-words? 
     #:min-length (or/c integer? #f)
     #:omit-word (string? . -> . any/c)
     #:omit-string (string? . -> . any/c)
     #:omit-txexpr (txexpr? . -> . any/c)
     #:min-left-length (or/c (and/c integer? positive?) #f)
     #:min-right-length (or/c (and/c integer? positive?) #f)) . ->* . xexpr/c)
-  (initialize-patterns) ; reset everything each time hyphenate is called
-  (for-each add-exception extra-exceptions)
+  (current-exception-patterns (apply hash (append-map convert-exception-word (report (current-exceptions)))))
   ;; todo?: connect this regexp pattern to the one used in word? predicate
   (define word-pattern #px"\\w+") ;; more restrictive than exception-word
   (define (replacer word . words)
@@ -218,11 +202,16 @@
   
   (apply-proc remove-hyphens x omit-string? omit-txexpr?))  
 
+
 (module+ main
-  (initialize-patterns)
-  (hyphenate "supercalifragilisticexpialidocious" "-")
+  (report (current-word-cache))
+  (hyphenate "snowman" "-")
+  (parameterize ([current-word-cache (make-hash)]
+                 [current-exceptions '("snow-man")])
+    ;(reset-patterns)
+    (report (current-patterns))
+    (hyphenate "snowman" "-"))
+  (report (current-word-cache))
+  (hyphenate "snowman" "-" )
   #;(define t "supercalifragilisticexpialidocious") 
   #;(hyphenate t "-"))
-
-
-
