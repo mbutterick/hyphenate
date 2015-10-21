@@ -1,5 +1,5 @@
 #lang racket/base
-(require sugar/include txexpr)
+(require sugar/include txexpr  (only-in xml xexpr/c))
 (require sugar/define racket/string racket/list racket/bool)
 (require "patterns-hashed.rkt" "exceptions.rkt")
 (provide hyphenate unhyphenate reset-patterns word->hyphenation-points exception-word? exception-words?)
@@ -15,7 +15,7 @@
 (define default-joiner #\u00AD)
 
 (define (add-pattern-to-cache pat)
-   (hash-set! pattern-cache (car pat) (cdr pat)))
+  (hash-set! pattern-cache (car pat) (cdr pat)))
 
 ;; Convert the hyphenated pattern into a point array for use later.
 (define (add-exception exception)
@@ -34,14 +34,16 @@
   (when (hash-empty? patterns)
     (set! patterns hashed-patterns)))
 
-(define (reset-patterns)
+(define+provide+safe (reset-patterns)
+  (-> void?)
   (define blank (make-hash))
   (set! pattern-cache (hash-copy blank))
   (set! patterns (hash-copy blank))
   (initialize-patterns))
 
 ;; An exception-word is a string of word characters or hyphens.
-(define (exception-word? x)
+(define+provide+safe (exception-word? x)
+  (string? . -> . boolean?)
   (and (string? x) (regexp-match #px"^[\\w-]+$" x) #t))
 
 
@@ -62,12 +64,12 @@
   ;; insert zeroes where there isn't a number in the pattern.
   (define new-pat
     (let* ([pat (regexp-match* #rx"." pat)] ; convert to list
-            [pat (map (λ(i) (or (string->natural i) i)) pat)] ; convert numbers
-            [pat (if (string? (car pat)) (cons 0 pat) pat)] ; add zeroes to front where needed
-            [pat (if (string? (car (reverse pat))) (reverse (cons 0 (reverse pat))) pat)]) ; and back
+           [pat (map (λ(i) (or (string->natural i) i)) pat)] ; convert numbers
+           [pat (if (string? (car pat)) (cons 0 pat) pat)] ; add zeroes to front where needed
+           [pat (if (string? (car (reverse pat))) (reverse (cons 0 (reverse pat))) pat)]) ; and back
       (apply append
              (reverse (for/fold([acc null]) 
-                        ([current (in-list pat)][i (in-naturals)])
+                               ([current (in-list pat)][i (in-naturals)])
                         (if (= i (sub1 (length pat))) 
                             (cons (reverse (list current)) acc)
                             (let ([next (list-ref pat (add1 i))])
@@ -93,8 +95,8 @@
          ;; ensures there's at least one (null) element in return value
          (define starting-value (make-list (add1 (length word-as-list)) 0))
          (reverse (for*/fold ([acc (cons starting-value null)])
-                    ([len (in-range (length word-as-list))] 
-                     [index (in-range (- (length word-as-list) len))])
+                             ([len (in-range (length word-as-list))] 
+                              [index (in-range (- (length word-as-list) len))])
                     (define substring (list->string (take (drop word-as-list index) (add1 len))))
                     (cond
                       [(hash-has-key? patterns substring)
@@ -123,10 +125,11 @@
 
 
 ;; Find hyphenation points in a word. This is not quite synonymous with syllables.
-(define (word->hyphenation-points word 
-                                        [min-length default-min-length] 
-                                        [min-left-length default-min-left-length] 
-                                        [min-right-length default-min-right-length])
+(define+provide+safe (word->hyphenation-points word 
+                                  [min-length default-min-length] 
+                                  [min-left-length default-min-left-length] 
+                                  [min-right-length default-min-right-length])
+  ((string?) ((or/c #f exact-nonnegative-integer?)(or/c #f exact-nonnegative-integer?)(or/c #f exact-nonnegative-integer?)) . ->* . (listof string?))
   (define (add-no-hyphen-zone points)
     ;; points is a list corresponding to the letters of the word.
     ;; to create a no-hyphenation zone of length n, zero out the first n-1 points
@@ -141,9 +144,9 @@
   (define (make-pieces word)
     (define-values (word-pieces last-piece) 
       (for/fold ([word-pieces empty]
-                  [current-piece empty]) 
-        ([str (in-list (regexp-match* #rx"." word))] ; explodes word into list of one-character strings (char list is slower)
-         [point (in-list (add-no-hyphen-zone (make-points word)))])
+                 [current-piece empty]) 
+                ([str (in-list (regexp-match* #rx"." word))] ; explodes word into list of one-character strings (char list is slower)
+                 [point (in-list (add-no-hyphen-zone (make-points word)))])
         (define updated-current-piece (cons str current-piece))
         (if (even? point)
             (values word-pieces updated-current-piece) ; even point denotes character
@@ -166,20 +169,29 @@
       [else x])))
 
 
-(define (hyphenate x [joiner default-joiner] 
-                         #:exceptions [extra-exceptions empty]  
-                         #:min-length [min-length default-min-length]
-                         #:min-left-length [min-left-length default-min-left-length]
-                         #:min-right-length [min-right-length default-min-right-length]
-                         #:omit-word [omit-word? (λ(x) #f)]
-                         #:omit-string [omit-string? (λ(x) #f)]
-                         #:omit-txexpr [omit-txexpr? (λ(x) #f)])
+(define+provide+safe (hyphenate x [joiner default-joiner] 
+                                #:exceptions [extra-exceptions empty]  
+                                #:min-length [min-length default-min-length]
+                                #:min-left-length [min-left-length default-min-left-length]
+                                #:min-right-length [min-right-length default-min-right-length]
+                                #:omit-word [omit-word? (λ(x) #f)]
+                                #:omit-string [omit-string? (λ(x) #f)]
+                                #:omit-txexpr [omit-txexpr? (λ(x) #f)])
+  ((xexpr?) 
+   ((or/c char? string?) 
+    #:exceptions exception-words? 
+    #:min-length (or/c integer? #f)
+    #:omit-word (string? . -> . any/c)
+    #:omit-string (string? . -> . any/c)
+    #:omit-txexpr (txexpr? . -> . any/c)
+    #:min-left-length (or/c (and/c integer? positive?) #f)
+    #:min-right-length (or/c (and/c integer? positive?) #f)) . ->* . xexpr/c)
   (initialize-patterns) ; reset everything each time hyphenate is called
   (for-each add-exception extra-exceptions)
   ;; todo?: connect this regexp pattern to the one used in word? predicate
   (define word-pattern #px"\\w+") ;; more restrictive than exception-word
   (define (replacer word . words)
-   (if (not (omit-word? word)) 
+    (if (not (omit-word? word)) 
         (string-join (word->hyphenation-points word min-length min-left-length min-right-length) (joiner->string joiner)) 
         word))
   (define (insert-hyphens text)
@@ -187,10 +199,15 @@
   (apply-proc insert-hyphens x omit-string? omit-txexpr?))
 
 
-(define (unhyphenate x [joiner default-joiner] 
-                           #:omit-word [omit-word? (λ(x) #f)]
-                           #:omit-string [omit-string? (λ(x) #f)]
-                           #:omit-txexpr [omit-txexpr? (λ(x) #f)])
+(define+provide+safe (unhyphenate x [joiner default-joiner] 
+                                  #:omit-word [omit-word? (λ(x) #f)]
+                                  #:omit-string [omit-string? (λ(x) #f)]
+                                  #:omit-txexpr [omit-txexpr? (λ(x) #f)])
+  ((xexpr/c) 
+   ((or/c char? string?) 
+    #:omit-word (string? . -> . any/c)
+    #:omit-string (string? . -> . any/c)
+    #:omit-txexpr (txexpr? . -> . any/c)) . ->* . xexpr/c)
   (define word-pattern (pregexp (format "[\\w~a]+" joiner)))
   (define (replacer word . words)
     (if (not (omit-word? word)) 
