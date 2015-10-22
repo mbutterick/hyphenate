@@ -8,7 +8,7 @@ present
 presents
 project
 projects
-reci-procity
+re-ci-pro-ci-ty
 re-cog-ni-zance
 ref-or-ma-tion
 ret-ri-bu-tion

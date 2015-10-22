@@ -1,5 +1,5 @@
 #lang racket/base
-(require "main.rkt" txexpr rackunit)
+(require hyphenate/us txexpr rackunit)
 
 ;(reset-patterns)
 (define omit-em-tag (λ(x) (member (car x) '(em))))

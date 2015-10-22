@@ -1,5 +1,5 @@
 #lang racket/base
-(require txexpr (only-in xml xexpr/c) sugar/define racket/string racket/list)
+(require txexpr (only-in xml xexpr/c) sugar/define racket/string racket/list racket/match)
 (require "params.rkt")
 (provide hyphenate unhyphenate word->hyphenation-points exception-word? exception-words? convert-exception-word string->hashpair)
 
@@ -22,7 +22,6 @@
     `(0 ,@(map (λ(x) (if (equal? x "-") 1 0)) (regexp-split #px"[a-z]" x)) 0))
   (list (make-key exception) (make-value exception)))
 
-(define-syntax-rule (hash-empty? h) (zero? (hash-count h)))
 
 ;; An exception-word is a string of word characters or hyphens.
 (define+provide+safe (exception-word? x)
@@ -31,6 +30,10 @@
 
 (define (exception-words? xs) 
   (and (list? xs) (andmap exception-word? xs)))
+
+
+(define (add-exception-word word)
+  (current-exceptions (apply hash-set (current-exceptions) (convert-exception-word word))))
 
 
 (define (string->natural i)
@@ -170,6 +173,7 @@
     #:min-left-length (or/c (and/c integer? positive?) #f)
     #:min-right-length (or/c (and/c integer? positive?) #f)) . ->* . xexpr/c)
   ;; todo?: connect this regexp pattern to the one used in word? predicate
+  (for-each add-exception-word extra-exceptions)
   (define word-pattern #px"\\w+") ;; more restrictive than exception-word
   (define (replacer word . words)
     (if (not (omit-word? word)) 

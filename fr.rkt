@@ -1,3 +1,3 @@
 #lang racket/base
-(require "helper.rkt")
-(reprovide fr)
+(require hyphenate/bootstrap)
+(build-main fr)
