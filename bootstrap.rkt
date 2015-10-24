@@ -9,30 +9,16 @@
                    [exceptions-path (datum->syntax stx (format "~a/exceptions.rkt" (syntax->datum #'dir)))])
        (replace-context stx
                         #'(begin
-                            (require (for-syntax racket/base))
-                            (require txexpr (only-in xml xexpr/c) (prefix-in core: hyphenate/core) hyphenate/params patterns-path exceptions-path)
+                            (require txexpr sugar/define (only-in xml xexpr/c)
+                                     (prefix-in core: hyphenate/core) hyphenate/params patterns-path exceptions-path)
                             (provide (all-from-out hyphenate/params))
-                            
-                            (define-syntax (define+provide+safe stx)
-                              (syntax-case stx ()
-                                [(_ (proc arg (... ...) . rest-arg) contract body (... ...))
-                                 #'(define+provide+safe proc contract
-                                     (λ(arg (... ...) . rest-arg) body (... ...)))]
-                                [(_ name contract body (... ...))
-                                 #'(begin
-                                     (define name body (... ...))
-                                     (provide name)
-                                     (module+ safe
-                                       (provide (contract-out [name contract]))))]))
-                            
+
                             (module+ safe
-                              (require racket/contract)
                               ;; An exception-word is a string of word characters or hyphens.
                               (define (exception-word? x)
                                 (and (string? x) (regexp-match #px"^[\\w-]+$" x) #t))
                               (define (exception-words? xs) 
                                 (and (list? xs) (andmap exception-word? xs))))
-                            
                             
                             (define+provide+safe hyphenate
                               ((xexpr?) ((or/c char? string?) 
@@ -48,7 +34,6 @@
                                                                        [current-patterns patterns]
                                                                        [current-exceptions exceptions])
                                                           (keyword-apply core:hyphenate kws kw-args rest)))))
-                            
                             
                             (define+provide+safe unhyphenate
                               ((xexpr/c) ((or/c char? string?) 

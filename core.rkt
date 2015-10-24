@@ -1,9 +1,6 @@
 #lang racket/base
-(require txexpr (only-in xml xexpr/c) sugar/define racket/string racket/list racket/match)
-(require "params.rkt")
+(require txexpr racket/string racket/list "params.rkt")
 (provide hyphenate unhyphenate word->hyphenation-points convert-exception-word string->hashpair)
-
-;; module data, define now but set! them later (because they're potentially big & slow)
 
 ;; module default values
 (define default-min-length 5)
@@ -103,11 +100,11 @@
 
 
 ;; Find hyphenation points in a word. This is not quite synonymous with syllables.
-(define+provide+safe (word->hyphenation-points word 
+(define (word->hyphenation-points word 
                                                [min-length default-min-length] 
                                                [min-left-length default-min-left-length] 
                                                [min-right-length default-min-right-length])
-  ((string?) ((or/c #f exact-nonnegative-integer?)(or/c #f exact-nonnegative-integer?)(or/c #f exact-nonnegative-integer?)) . ->* . (listof string?))
+  #;((string?) ((or/c #f exact-nonnegative-integer?)(or/c #f exact-nonnegative-integer?)(or/c #f exact-nonnegative-integer?)) . ->* . (listof string?))
   (define (add-no-hyphen-zone points)
     ;; points is a list corresponding to the letters of the word.
     ;; to create a no-hyphenation zone of length n, zero out the first n-1 points
@@ -147,22 +144,15 @@
       [else x])))
 
 (require sugar/debug)
-(define+provide+safe (hyphenate x [joiner default-joiner] 
-                                #:exceptions [extra-exceptions empty]  
-                                #:min-length [min-length default-min-length]
-                                #:min-left-length [min-left-length default-min-left-length]
-                                #:min-right-length [min-right-length default-min-right-length]
-                                #:omit-word [omit-word? (λ(x) #f)]
-                                #:omit-string [omit-string? (λ(x) #f)]
-                                #:omit-txexpr [omit-txexpr? (λ(x) #f)])
-  ((xexpr?) 
-   ((or/c char? string?) 
-    #:min-length (or/c integer? #f)
-    #:omit-word (string? . -> . any/c)
-    #:omit-string (string? . -> . any/c)
-    #:omit-txexpr (txexpr? . -> . any/c)
-    #:min-left-length (or/c (and/c integer? positive?) #f)
-    #:min-right-length (or/c (and/c integer? positive?) #f)) . ->* . xexpr/c)
+(define (hyphenate x [joiner default-joiner] 
+                   #:exceptions [extra-exceptions empty]  
+                   #:min-length [min-length default-min-length]
+                   #:min-left-length [min-left-length default-min-left-length]
+                   #:min-right-length [min-right-length default-min-right-length]
+                   #:omit-word [omit-word? (λ(x) #f)]
+                   #:omit-string [omit-string? (λ(x) #f)]
+                   #:omit-txexpr [omit-txexpr? (λ(x) #f)])
+  
   ;; todo?: connect this regexp pattern to the one used in word? predicate
   (for-each add-exception-word extra-exceptions)
   (define word-pattern #px"\\w+") ;; more restrictive than exception-word
@@ -175,15 +165,10 @@
   (apply-proc insert-hyphens x omit-string? omit-txexpr?))
 
 
-(define+provide+safe (unhyphenate x [joiner default-joiner] 
-                                  #:omit-word [omit-word? (λ(x) #f)]
-                                  #:omit-string [omit-string? (λ(x) #f)]
-                                  #:omit-txexpr [omit-txexpr? (λ(x) #f)])
-  ((xexpr/c) 
-   ((or/c char? string?) 
-    #:omit-word (string? . -> . any/c)
-    #:omit-string (string? . -> . any/c)
-    #:omit-txexpr (txexpr? . -> . any/c)) . ->* . xexpr/c)
+(define (unhyphenate x [joiner default-joiner] 
+                     #:omit-word [omit-word? (λ(x) #f)]
+                     #:omit-string [omit-string? (λ(x) #f)]
+                     #:omit-txexpr [omit-txexpr? (λ(x) #f)])
   (define word-pattern (pregexp (format "[\\w~a]+" joiner)))
   (define (replacer word . words)
     (if (not (omit-word? word)) 
@@ -196,14 +181,14 @@
 
 
 #;(module+ main
-  (report (current-word-cache))
-  (hyphenate "snowman" "-")
-  (parameterize ([current-word-cache (make-hash)]
-                 [current-exceptions '("snow-man")])
-    ;(reset-patterns)
-    (report (current-patterns))
-    (hyphenate "snowman" "-"))
-  (report (current-word-cache))
-  (hyphenate "snowman" "-" )
-  #;(define t "supercalifragilisticexpialidocious") 
-  #;(hyphenate t "-"))
+    (report (current-word-cache))
+    (hyphenate "snowman" "-")
+    (parameterize ([current-word-cache (make-hash)]
+                   [current-exceptions '("snow-man")])
+      ;(reset-patterns)
+      (report (current-patterns))
+      (hyphenate "snowman" "-"))
+    (report (current-word-cache))
+    (hyphenate "snowman" "-" )
+    #;(define t "supercalifragilisticexpialidocious") 
+    #;(hyphenate t "-"))
