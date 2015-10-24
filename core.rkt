@@ -1,7 +1,7 @@
 #lang racket/base
 (require txexpr (only-in xml xexpr/c) sugar/define racket/string racket/list racket/match)
 (require "params.rkt")
-(provide hyphenate unhyphenate word->hyphenation-points exception-word? exception-words? convert-exception-word string->hashpair)
+(provide hyphenate unhyphenate word->hyphenation-points convert-exception-word string->hashpair)
 
 ;; module data, define now but set! them later (because they're potentially big & slow)
 
@@ -21,15 +21,6 @@
   (define (make-value x)
     `(0 ,@(map (λ(x) (if (equal? x "-") 1 0)) (regexp-split #px"[a-z]" x)) 0))
   (list (make-key exception) (make-value exception)))
-
-
-;; An exception-word is a string of word characters or hyphens.
-(define+provide+safe (exception-word? x)
-  (string? . -> . boolean?)
-  (and (string? x) (regexp-match #px"^[\\w-]+$" x) #t))
-
-(define (exception-words? xs) 
-  (and (list? xs) (andmap exception-word? xs)))
 
 
 (define (add-exception-word word)
