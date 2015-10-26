@@ -15,8 +15,6 @@
 
 A simple hyphenation engine that uses the Knuth–Liang hyphenation algorithm originally developed for TeX. I have added little to their work. Accordingly, I take little credit.
 
-I originally put together this module to handle hyphenation for my web-based book @link["http://practicaltypography.com"]{Butterick's Practical Typography} (which I made with Racket & Scribble). Though support for CSS-based hyphenation in web browsers is @link["http://caniuse.com/#search=hyphen"]{still iffy}, soft hyphens work reliably well. But putting them into the text manually is a drag. Thus a module was born.
-
 @section{Installation}
 
 At the command line:
@@ -194,6 +192,33 @@ Keep in mind that soft hyphens could appear in your input string. Certain word p
      (unhyphenate (hyphenate "True\u00ADType typefaces"))
      (hyphenate (unhyphenate "True\u00ADType typefaces") #\-)
    ]
+
+
+@section{French}
+
+@defmodule[#:multi (hyphenate/fr (submod hyphenate/fr safe))]
+
+French hyphenation is available by importing the module as @racketmodname[hyphenate/fr] or @racketmodname[(submod hyphenate/fr safe)] and using the @racket[hyphenate] function normally. Below, notice that the word ``formidable'' hyphenates differently in French.
+
+@examples[#:eval my-eval
+     (hyphenate "formidable" #\-)
+     (module fr racket/base
+       (require hyphenate/fr)
+       (hyphenate "formidable" #\-))
+     (require 'fr)
+]
+
+The two languages are in separate submodules for performance reasons. That way, they can maintain separate caches of hyphenated words. 
+
+There is no way to use @racket[hyphenate] in ``polyglot'' mode, where English and French are detected automatically. It is possible, however, to mix both the English and French @racket[hyphenate] functions in a single file, and apply them as needed. To avoid a name conflict between the two @racket[hyphenate] functions, you'll need to use @racket[prefix-in]:
+
+
+@examples[#:eval my-eval
+      (require (prefix-in fr: hyphenate/fr))
+     (hyphenate "formidable" #\-)
+     (fr:hyphenate "formidable" #\-)
+ ]
+
 
 
 @section{License & source code}

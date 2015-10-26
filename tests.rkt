@@ -1,7 +1,6 @@
 #lang racket/base
 (require (submod hyphenate safe) txexpr rackunit)
 
-;(reset-patterns)
 (define omit-em-tag (λ(x) (member (car x) '(em))))
 (define omit-p-tag (λ(x) (member (car x) '(p))))
 (define omit-foo-zam-tag (λ(x) (member (car x) '(foo zam))))
@@ -68,3 +67,13 @@
 (check-equal? (hyphenate "polymorphism" #\- #:min-left-length 3 #:min-right-length 7) "poly-morphism")
 (check-equal? (hyphenate "polymorphism" #\- #:min-left-length 7 #:min-right-length 7) "polymorphism")
 (check-equal? (hyphenate "polymorphism" #\* #:exceptions '("polymo-rphism")) "polymo*rphism")
+
+
+(check-equal? (hyphenate "formidable" #\-) "for-mi-da-ble")
+
+(module french racket/base
+  (require (submod hyphenate/fr safe) rackunit)
+  (check-equal? (hyphenate "formidable" #\-) "for-mi-dable")) ; hyphenates differently in French
+
+(require 'french)
+  
