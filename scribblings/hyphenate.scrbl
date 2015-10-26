@@ -11,13 +11,9 @@
 @author[(author+email "Matthew Butterick" "mb@mbtype.com")]
 
 
-@defmodule[#:multi (hyphenate (submod hyphenate safe) typed/hyphenate)]
+@defmodule[#:multi (hyphenate (submod hyphenate safe))]
 
 A simple hyphenation engine that uses the Knuth–Liang hyphenation algorithm originally developed for TeX. I have added little to their work. Accordingly, I take little credit.
-
-I originally put together this module to handle hyphenation for my web-based book @link["http://practicaltypography.com"]{Butterick's Practical Typography} (which I made with Racket & Scribble). Though support for CSS-based hyphenation in web browsers is @link["http://caniuse.com/#search=hyphen"]{still iffy}, soft hyphens work reliably well. But putting them into the text manually is a drag. Thus a module was born.
-
-I thank Benjamin Greenman and Alexander Knauth for helpful suggestions on the typed version. 
 
 @section{Installation}
 
@@ -29,16 +25,11 @@ After that, you can update the package like so:
 
 @section{Importing the module}
 
-The module can be invoked three ways: fast, safe, and typed. 
+The module can be invoked two ways: fast or safe. 
 
 Fast mode is the default, which you get by importing the module in the usual way: @code{(require hyphenate)}. 
 
 Safe mode enables the function contracts documented below. Use safe mode by importing the module as @code{(require (submod hyphenate safe))}.
-
-The typed version is invoked as @code{(require typed/hyphenate)}. The typed version is implemented ``natively'' in the sense that it is compiled separately with type annotations. It is not a @racket[require/typed] wrapper around the untyped code. This avoids the contract barrier that is otherwise automatically imposed between typed and untyped code.
-
-@margin-note{I explain more about this cross-compiling technique in @link["http://unitscale.com/mb/technique/dual-typed-untyped-library.html"]{Making a dual typed / untyped Racket library}.}
-
 
 @section{Interface}
 
@@ -201,6 +192,33 @@ Keep in mind that soft hyphens could appear in your input string. Certain word p
      (unhyphenate (hyphenate "True\u00ADType typefaces"))
      (hyphenate (unhyphenate "True\u00ADType typefaces") #\-)
    ]
+
+
+@section{French}
+
+@defmodule[#:multi (hyphenate/fr (submod hyphenate/fr safe))]
+
+French hyphenation is available by importing the module as @racketmodname[hyphenate/fr] or @racketmodname[(submod hyphenate/fr safe)] and using the @racket[hyphenate] function normally. Below, notice that the word ``formidable'' hyphenates differently in French.
+
+@examples[#:eval my-eval
+     (hyphenate "formidable" #\-)
+     (module fr racket/base
+       (require hyphenate/fr)
+       (hyphenate "formidable" #\-))
+     (require 'fr)
+]
+
+The two languages are in separate submodules for performance reasons. That way, they can maintain separate caches of hyphenated words. 
+
+There is no way to use @racket[hyphenate] in ``polyglot'' mode, where English and French are detected automatically. It is possible, however, to mix both the English and French @racket[hyphenate] functions in a single file, and apply them as needed. To avoid a name conflict between the two @racket[hyphenate] functions, you'll need to use @racket[prefix-in]:
+
+
+@examples[#:eval my-eval
+      (require (prefix-in fr: hyphenate/fr))
+     (hyphenate "formidable" #\-)
+     (fr:hyphenate "formidable" #\-)
+ ]
+
 
 
 @section{License & source code}

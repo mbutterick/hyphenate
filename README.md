@@ -14,10 +14,6 @@ Then require it in your Racket file, in standard mode:
 In safe mode (with contracts):
 
     (require (submod hyphenate safe))
-
-Or in typed mode:
-
-    (require typed/hyphenate)
     
 And enjoy:
 

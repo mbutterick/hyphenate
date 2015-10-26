@@ -1,0 +1,23 @@
+#lang hyphenate/exception-prep
+as-so-ciate
+as-so-ciates
+dec-li-na-tion
+oblig-a-tory
+phil-an-thropic
+present
+presents
+project
+projects
+re-ci-pro-ci-ty
+re-cog-ni-zance
+ref-or-ma-tion
+ret-ri-bu-tion
+ta-ble
+real-ly
+law-yer
+law-yers
+law-yered
+law-yer-ing
+law-yer-ly
+oki-na
+oki-nas
