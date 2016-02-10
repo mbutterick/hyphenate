@@ -1,4 +1,5 @@
 #lang info
+(define version "0.1")
 (define collection "hyphenate")
 (define deps '("base" "sugar" "txexpr" "rackunit-lib"))
 (define update-implies '("txexpr" "sugar"))
