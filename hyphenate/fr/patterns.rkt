@@ -1,4 +1,4 @@
-#lang hyphenate/pattern-prep
+#lang hyphenate/private/pattern-prep
 
 #|
 

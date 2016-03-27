@@ -1,1 +1,0 @@
-#lang hyphenate/exception-prep

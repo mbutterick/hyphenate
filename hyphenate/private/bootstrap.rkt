@@ -9,9 +9,9 @@
                    [exceptions-path (datum->syntax stx (format "~a/exceptions.rkt" (syntax->datum #'dir)))])
        (replace-context stx
                         #'(begin
-                            (require txexpr sugar/define (only-in xml xexpr/c)
-                                     (prefix-in core: hyphenate/core) hyphenate/params patterns-path exceptions-path)
-                            (provide (all-from-out hyphenate/params))
+                            (require txexpr/base sugar/define (only-in xml xexpr/c)
+                                     (prefix-in core: hyphenate/private/core) hyphenate/private/params patterns-path exceptions-path)
+                            (provide (all-from-out hyphenate/private/params))
 
                             (module+ safe
                               ;; An exception-word is a string of word characters or hyphens.

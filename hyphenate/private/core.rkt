@@ -143,7 +143,7 @@
        (make-txexpr (get-tag x) (get-attrs x) (map loop (get-elements x)))]
       [else x])))
 
-(require sugar/debug)
+
 (define (hyphenate x [joiner default-joiner] 
                    #:exceptions [extra-exceptions empty]  
                    #:min-length [min-length default-min-length]
