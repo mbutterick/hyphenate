@@ -1,5 +1,5 @@
 #lang racket/base
-(require txexpr racket/string racket/list "params.rkt")
+(require txexpr/base racket/string racket/list "params.rkt")
 (provide hyphenate unhyphenate word->hyphenation-points convert-exception-word string->hashpair)
 
 ;; module default values
@@ -143,7 +143,7 @@
        (make-txexpr (get-tag x) (get-attrs x) (map loop (get-elements x)))]
       [else x])))
 
-(require sugar/debug)
+
 (define (hyphenate x [joiner default-joiner] 
                    #:exceptions [extra-exceptions empty]  
                    #:min-length [min-length default-min-length]

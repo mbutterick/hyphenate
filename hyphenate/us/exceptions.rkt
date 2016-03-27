@@ -1,4 +1,4 @@
-#lang hyphenate/exception-prep
+#lang hyphenate/private/exception-prep
 as-so-ciate
 as-so-ciates
 dec-li-na-tion
