@@ -1,8 +1,8 @@
 #lang info
-(define version "0.1")
+(define version "0.2")
 (define collection "hyphenate")
-(define deps '("base" "sugar" "txexpr" "rackunit-lib"))
+(define deps '("base" ["sugar" #:version "0.2"] ["txexpr" #:version "0.2"]))
 (define update-implies '("txexpr" "sugar"))
-(define build-deps '("scribble-lib" "racket-doc"))
+(define build-deps '("scribble-lib" "racket-doc" "rackunit-lib"))
 (define scribblings '(("scribblings/hyphenate.scrbl" ())))
 (define compile-omit-paths '("tests.rkt"))

@@ -1,5 +1,5 @@
 #lang racket/base
-(require txexpr racket/string racket/list "params.rkt")
+(require txexpr/base racket/string racket/list "params.rkt")
 (provide hyphenate unhyphenate word->hyphenation-points convert-exception-word string->hashpair)
 
 ;; module default values
