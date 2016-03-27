@@ -5,8 +5,8 @@
 (define-syntax (build-main stx)
   (syntax-case stx () 
     [(_ dir)
-     (with-syntax ([patterns-path (datum->syntax stx (format "~a/patterns.rkt" (syntax->datum #'dir)))]
-                   [exceptions-path (datum->syntax stx (format "~a/exceptions.rkt" (syntax->datum #'dir)))])
+     (with-syntax ([patterns-path (format "~a/patterns.rkt" (syntax->datum #'dir))]
+                   [exceptions-path (format "~a/exceptions.rkt" (syntax->datum #'dir))])
        (replace-context stx
                         #'(begin
                             (require txexpr/base sugar/define (only-in xml xexpr/c)
