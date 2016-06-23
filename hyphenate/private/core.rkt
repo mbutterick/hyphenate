@@ -52,8 +52,8 @@
   (define-values (strs nums)
     (for/lists (strs nums)
                ;; using unicode-aware regexps to allow unicode hyphenation patterns
-               ;; a pattern is a list of subpatterns, each of which has maybe a character followed by maybe a number.
-               ;; the first position may just have a number.
+               ;; a pattern is a list of subpatterns, each of which is a character possibly followed by a number.
+               ;; also, the first position may just have a number.
                ([subpat (in-list (regexp-match* #px"^\\d?|(\\p{L}|\\p{P})\\d?" pat))])
                (define str (cond
                              [(regexp-match #px"(\\p{L}|\\p{P})?" subpat) => car]
