@@ -1,5 +1,6 @@
 #lang racket/base
-(require (submod hyphenate safe) txexpr/base rackunit)
+(require (submod hyphenate safe) txexpr/base rackunit "private/params.rkt")
+(require/expose "private/core.rkt" [add-exception-word])
 
 (define omit-em-tag (λ(x) (member (car x) '(em))))
 (define omit-p-tag (λ(x) (member (car x) '(p))))
@@ -7,7 +8,7 @@
 (define ends-with-s (λ(x) (regexp-match #rx"s$" x)))
 (define omit-script-tag (λ(x) (member (car x) '(script))))
 (define tx-with-attr (λ(x) (with-handlers ([exn:fail? (λ(exn) #f)]) 
-                                         (equal? (attr-ref x 'hyphens) "no-thanks"))))
+                             (equal? (attr-ref x 'hyphens) "no-thanks"))))
 
 (check-equal? (hyphenate "edges") "edges") ;; word without matching patterns
 (check-equal? (hyphenate "polymorphism") "poly\u00ADmor\u00ADphism")
@@ -68,6 +69,8 @@
 (check-equal? (hyphenate "polymorphism" #\- #:min-left-length 7 #:min-right-length 7) "polymorphism")
 (check-equal? (hyphenate "polymorphism" #\* #:exceptions '("polymo-rphism")) "polymo*rphism")
 
+(add-exception-word "snow-man")
+(check-equal? (hyphenate "snowman" "-") "snow-man")
 
 (check-equal? (hyphenate "formidable" #\-) "for-mi-da-ble")
 
@@ -76,4 +79,3 @@
   (check-equal? (hyphenate "formidable" #\-) "for-mi-dable")) ; hyphenates differently in French
 
 (require 'french)
-  

@@ -16,7 +16,7 @@
                             (module+ safe
                               ;; An exception-word is a string of word characters or hyphens.
                               (define (exception-word? x)
-                                (and (string? x) (regexp-match #px"^[\\w-]+$" x) #t))
+                                (and (string? x) (regexp-match #px"^(\\p{L}|-)+$" x) #t))
                               (define (exception-words? xs) 
                                 (and (list? xs) (andmap exception-word? xs))))
                             

@@ -1,6 +1,9 @@
 #lang racket/base
 (require txexpr/base racket/string racket/list "params.rkt")
-(provide hyphenate unhyphenate word->hyphenation-points convert-exception-word string->hashpair)
+(provide hyphenate unhyphenate word->hyphenation-points convert-exception-word add-exception-word string->hashpair)
+
+(module+ test
+  (require rackunit))
 
 ;; module default values
 (define default-min-length 5)
@@ -11,13 +14,20 @@
 (define (cache-word pat)
   (hash-set! (current-word-cache) (car pat) (cdr pat)))
 
+
 ;; Convert the hyphenated pattern into a point array for use later.
 (define (convert-exception-word exception)
   (define (make-key x)
     (format ".~a." (string-replace x "-" "")))
   (define (make-value x)
-    `(0 ,@(map (λ(x) (if (equal? x "-") 1 0)) (regexp-split #px"[a-z]" x)) 0))
+    `(0 ,@(map (λ(x) (if (equal? x "-") 1 0)) (regexp-split #px"\\p{L}" x)) 0))
   (list (make-key exception) (make-value exception)))
+
+
+(module+ test
+  (check-equal? (convert-exception-word "snôw-man") '(".snôwman." (0 0 0 0 0 1 0 0 0 0)))
+  (check-equal? (convert-exception-word "snôwman") '(".snôwman." (0 0 0 0 0 0 0 0 0 0)))
+  (check-equal? (convert-exception-word "sn-ôw-ma-n") '(".snôwman." (0 0 0 1 0 1 0 1 0 0))))
 
 
 (define (add-exception-word word)
@@ -31,12 +41,20 @@
     result))
 
 
+(module+ test
+  (check-equal? (string->natural "Foo") #f)
+  (check-equal? (string->natural "1.0") 1)
+  (check-equal? (string->natural "-3") #f))
+
+
 (define (string->hashpair pat)
   ;; first convert the pattern to a list of alternating letters and numbers.
   ;; insert zeroes where there isn't a number in the pattern.
   (define-values (strs nums)
     (for/lists (strs nums)
                ;; using unicode-aware regexps to allow unicode hyphenation patterns
+               ;; a pattern is a list of subpatterns, each of which has maybe a character followed by maybe a number.
+               ;; the first position may just have a number.
                ([subpat (in-list (regexp-match* #px"^\\d?|(\\p{L}|\\p{P})\\d?" pat))])
                (define str (cond
                              [(regexp-match #px"(\\p{L}|\\p{P})?" subpat) => car]
@@ -49,7 +67,6 @@
 
 
 (module+ test
-  (require rackunit)
   (check-equal? (string->hashpair "2'2") '("'" (2 2)))
   (check-equal? (string->hashpair ".â4") '(".â" (0 0 4)))
   (check-equal? (string->hashpair ".ý4") '(".ý" (0 0 4)))
@@ -62,35 +79,42 @@
 (define (apply-map-max patterns)
   ;; each pattern is a list of numbers
   ;; all the patterns have the same length
-  (cond
-    [(empty? patterns) empty] ; special case
-    [(= 1 (length patterns)) (car patterns)] ; no competition for max
-    [else (apply map (λ xs (apply max xs)) patterns)])) ; run max against parallel elements
+  (if (empty? patterns)
+      empty ; special case
+      (apply map (λ xs (apply max xs)) patterns))) ; run max against parallel elements
+
+
+(module+ test
+  (require rackunit)
+  (check-equal? (apply-map-max empty) empty)
+  (check-equal? (apply-map-max '((1 0 0))) '(1 0 0))
+  (check-equal? (apply-map-max '((1 0 0) (0 1 0))) '(1 1 0))
+  (check-equal? (apply-map-max '((1 0 0) (0 1 0) (0 0 1))) '(1 1 1))
+  (check-equal? (apply-map-max '((1 2 3) (2 3 1) (3 1 2))) '(3 3 3)))
 
 
 (define (make-points word)
   ;; walk through all the substrings and see if there's a matching pattern.
-  ;; if so, pad it out to full length (so we can (apply map max ...) later on)
+  ;; if so, pad it out to full length (so we can `apply-map-max` later on)
   (define word-with-dots (format ".~a." (string-downcase word)))
-  (define matching-patterns 
+  (define matching-patterns
     (cond
       [(or (hash-ref (current-word-cache) word-with-dots #f)
            (hash-ref (current-exceptions) word-with-dots #f)) => list]
       [else
-       (define word-as-list (string->list word-with-dots))
-       (define word-as-list-length (length word-as-list))
+       (define word-length (string-length word-with-dots))
        ;; ensures there's at least one (null) element in return value
-       (define starting-value (make-list (add1 word-as-list-length) 0))
+       (define starting-value (make-list (add1 word-length) 0))
        (reverse (for*/fold ([acc (cons starting-value null)])
-                           ([len (in-range word-as-list-length)] 
-                            [index (in-range (- word-as-list-length len))])
-                  (define substr (list->string (take (drop word-as-list index) (add1 len))))
+                           ([len (in-range word-length)] 
+                            [start (in-range (- word-length len))])
+                  (define substr (car (regexp-match (pregexp (format ".{~a}" (add1 len))) word-with-dots start)))
                   (cond
                     [(hash-has-key? (current-patterns) substr)
                      (define value (hash-ref (current-patterns) substr))
                      ;; put together head padding + value + tail padding
                      (define pattern-to-add
-                       (append (make-list index 0) value (make-list (- (add1 word-as-list-length) (length value) index) 0)))
+                       (append (make-list start 0) value (make-list (- (add1 word-length) (length value) start) 0)))
                      (cons pattern-to-add acc)]
                     [else acc])))])) 
   
@@ -108,21 +132,25 @@
 
 ;; Find hyphenation points in a word. This is not quite synonymous with syllables.
 (define (word->hyphenation-points word 
-                                  [min-length default-min-length] 
-                                  [min-left-length default-min-left-length] 
-                                  [min-right-length default-min-right-length])
-  #;((string?) ((or/c #f exact-nonnegative-integer?)(or/c #f exact-nonnegative-integer?)(or/c #f exact-nonnegative-integer?)) . ->* . (listof string?))
+                                  [min-length-in #f] 
+                                  [min-left-length-in #f] 
+                                  [min-right-length-in #f])
+  
+  (define min-length (or min-length-in default-min-length))
+  (define min-left-length (or min-left-length-in default-min-left-length))
+  (define min-right-length (or min-right-length-in default-min-right-length))
+  
   (define (add-no-hyphen-zone points)
-    ;; points is a list corresponding to the letters of the word.
-    ;; to create a no-hyphenation zone of length n, zero out the first n-1 points
-    ;; and the last n points (because the last value in points is always superfluous)
-    (let* ([min-left-length (min (or min-left-length default-min-left-length) (length points))]
-           [min-right-length (min (or min-right-length default-min-right-length) (length points))])
-      (define points-with-zeroes-on-left 
-        (append (make-list (sub1 min-left-length) 0) (drop points (sub1 min-left-length))))
-      (define points-with-zeroes-on-left-and-right 
-        (append (drop-right points-with-zeroes-on-left min-right-length) (make-list min-right-length 0)))
-      points-with-zeroes-on-left-and-right))
+    (let ([left-zeroes (min min-left-length (length points))]
+          [right-zeroes (min min-right-length (length points))])
+      ;; points is a list corresponding to the letters of the word.
+      (for/list ([(point idx) (in-indexed points)])
+                ;; to create a no-hyphenation zone of length n, zero out the first n-1 points
+                ;; and the last n points (because the last value in points is always superfluous)
+                (if (or (< idx (sub1 left-zeroes)) (< (sub1 (- (length points) right-zeroes)) idx))
+                    0
+                    point))))
+  
   (define (make-pieces word)
     (define-values (word-pieces last-piece) 
       (for/fold ([word-pieces empty]
@@ -184,17 +212,3 @@
     (regexp-replace* word-pattern text replacer))
   
   (apply-proc remove-hyphens x omit-string? omit-txexpr?))  
-
-
-#;(module+ main
-    (report (current-word-cache))
-    (hyphenate "snowman" "-")
-    (parameterize ([current-word-cache (make-hash)]
-                   [current-exceptions '("snow-man")])
-      ;(reset-patterns)
-      (report (current-patterns))
-      (hyphenate "snowman" "-"))
-    (report (current-word-cache))
-    (hyphenate "snowman" "-" )
-    #;(define t "supercalifragilisticexpialidocious") 
-    #;(hyphenate t "-"))
