@@ -26,35 +26,40 @@
 
 (define (string->natural i)
   (let* ([result (string->number i)]
-         [result (and (number? result) (inexact->exact result))]
+         [result (and result (inexact->exact result))]
          [result (and (exact-nonnegative-integer? result) result)])
     result))
 
+
 (define (string->hashpair pat)
-  (define boundary-name ".")
-  
   ;; first convert the pattern to a list of alternating letters and numbers.
   ;; insert zeroes where there isn't a number in the pattern.
-  (define new-pat
-    (let* ([pat (regexp-match* #rx"." pat)] ; convert to list
-           [pat (map (λ(i) (or (string->natural i) i)) pat)] ; convert numbers
-           [pat (if (string? (car pat)) (cons 0 pat) pat)] ; add zeroes to front where needed
-           [pat (if (string? (car (reverse pat))) (reverse (cons 0 (reverse pat))) pat)]) ; and back
-      (apply append
-             (reverse (for/fold([acc null]) 
-                               ([current (in-list pat)][i (in-naturals)])
-                        (if (= i (sub1 (length pat))) 
-                            (cons (reverse (list current)) acc)
-                            (let ([next (list-ref pat (add1 i))])
-                              ;; insert zeroes where there isn't a number
-                              (cons (reverse (if (and (or (equal? current boundary-name) (string? current)) (string? next)) 
-                                                 (list current 0)
-                                                 (list current))) acc))))))))
-  
-  ;; then slice out the string & numerical parts to be a key / value pair.
-  (define value (filter exact-nonnegative-integer? new-pat))
-  (define key (filter string? new-pat))
-  (list (apply string-append key) value))
+  (define-values (strs nums)
+    (for/lists (strs nums)
+               ;; using unicode-aware regexps to allow unicode hyphenation patterns
+               ([subpat (in-list (regexp-match* #px"^\\d?|(\\p{L}|\\p{P})\\d?" pat))])
+               (define str (cond
+                                [(regexp-match #px"(\\p{L}|\\p{P})?" subpat) => car]
+                                [else ""]))
+               (define num (cond
+                                [(regexp-match #px"\\d" subpat) => (compose1 string->natural car)]
+                                [else 0]))
+               (values str num)))
+  (list (string-append* strs) nums))
+
+(module+ test
+  (require rackunit)
+  (check-equal? (string->hashpair "2'2") '("'" (2 2)))
+  (check-equal? (string->hashpair ".â4") '(".â" (0 0 4)))
+  (check-equal? (string->hashpair ".ý4") '(".ý" (0 0 4)))
+  (check-equal? (string->hashpair "'ý4") '("'ý" (0 0 4)))
+  (check-equal? (string->hashpair "’ý4") '("’ý" (0 0 4)))
+  (check-equal? (string->hashpair "4ý-") '("ý-" (4 0 0)))
+  (check-equal? (string->hashpair ".ach4") '(".ach" (0 0 0 0 4)))
+  (check-equal? (string->hashpair ".ad4der") '(".adder" (0 0 0 4 0 0 0)))
+  (check-equal? (string->hashpair ".af1t") '(".aft" (0 0 0 1 0)))
+  (check-equal? (string->hashpair ".al3t") '(".alt" (0 0 0 3 0))))
+
 
 (define (make-points word)
   ;; walk through all the substrings and see if there's a matching pattern.
@@ -101,9 +106,9 @@
 
 ;; Find hyphenation points in a word. This is not quite synonymous with syllables.
 (define (word->hyphenation-points word 
-                                               [min-length default-min-length] 
-                                               [min-left-length default-min-left-length] 
-                                               [min-right-length default-min-right-length])
+                                  [min-length default-min-length] 
+                                  [min-left-length default-min-left-length] 
+                                  [min-right-length default-min-right-length])
   #;((string?) ((or/c #f exact-nonnegative-integer?)(or/c #f exact-nonnegative-integer?)(or/c #f exact-nonnegative-integer?)) . ->* . (listof string?))
   (define (add-no-hyphen-zone points)
     ;; points is a list corresponding to the letters of the word.
