@@ -1,6 +1,6 @@
 #lang racket/base
 (require txexpr/base racket/string racket/list "params.rkt")
-(provide hyphenate unhyphenate word->hyphenation-points convert-exception-word add-exception-word string->hashpair)
+(provide hyphenate unhyphenate word->hyphenation-points convert-exception-word string->hashpair)
 
 (module+ test
   (require rackunit))
@@ -17,8 +17,7 @@
 
 ;; Convert the hyphenated pattern into a point array for use later.
 (define (convert-exception-word exception)
-  (define (make-key x)
-    (format ".~a." (string-replace x "-" "")))
+  (define (make-key x) (format ".~a." (string-replace x "-" "")))
   (define (make-value x)
     `(0 ,@(map (λ(x) (if (equal? x "-") 1 0)) (regexp-split #px"\\p{L}" x)) 0))
   (list (make-key exception) (make-value exception)))
@@ -105,18 +104,18 @@
        (define word-length (string-length word-with-dots))
        ;; ensures there's at least one (null) element in return value
        (define starting-value (make-list (add1 word-length) 0))
-       (reverse (for*/fold ([acc (cons starting-value null)])
-                           ([len (in-range word-length)] 
-                            [start (in-range (- word-length len))])
-                  (define substr (car (regexp-match (pregexp (format ".{~a}" (add1 len))) word-with-dots start)))
-                  (cond
-                    [(hash-has-key? (current-patterns) substr)
-                     (define value (hash-ref (current-patterns) substr))
-                     ;; put together head padding + value + tail padding
-                     (define pattern-to-add
-                       (append (make-list start 0) value (make-list (- (add1 word-length) (length value) start) 0)))
-                     (cons pattern-to-add acc)]
-                    [else acc])))])) 
+       (for*/fold ([acc (cons starting-value null)])
+                  ([start (in-range word-length)] 
+                   [end (in-range start word-length)]
+                   [substr (in-value (substring word-with-dots start (add1 end)))]
+                   #:when (hash-has-key? (current-patterns) substr))
+         (define partial-pattern (hash-ref (current-patterns) substr))
+         ;; put together head padding + value + tail padding
+         (define full-length-pattern
+           (append (make-list start 0)
+                   partial-pattern
+                   (make-list (- (add1 word-length) (length partial-pattern) start) 0)))
+         (cons full-length-pattern acc))]))
   
   (define max-value-pattern (apply-map-max matching-patterns))
   (cache-word (cons word-with-dots max-value-pattern))
@@ -147,15 +146,16 @@
       (for/list ([(point idx) (in-indexed points)])
                 ;; to create a no-hyphenation zone of length n, zero out the first n-1 points
                 ;; and the last n points (because the last value in points is always superfluous)
-                (if (or (< idx (sub1 left-zeroes)) (< (sub1 (- (length points) right-zeroes)) idx))
-                    0
-                    point))))
+                (if (<= left-zeroes (add1 idx) (- (length points) right-zeroes))
+                    point
+                    0))))
   
   (define (make-pieces word)
     (define-values (word-pieces last-piece) 
       (for/fold ([word-pieces empty]
-                 [current-piece empty]) 
-                ([str (in-list (regexp-match* #rx"." word))] ; explodes word into list of one-character strings (char list is slower)
+                 [current-piece empty])
+                ;; explodes word into list of one-character strings (char list is slower)
+                ([str (in-list (regexp-match* #rx"." word))] 
                  [point (in-list (add-no-hyphen-zone (make-points word)))])
         (define updated-current-piece (cons str current-piece))
         (if (even? point)
