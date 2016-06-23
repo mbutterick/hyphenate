@@ -39,13 +39,14 @@
                ;; using unicode-aware regexps to allow unicode hyphenation patterns
                ([subpat (in-list (regexp-match* #px"^\\d?|(\\p{L}|\\p{P})\\d?" pat))])
                (define str (cond
-                                [(regexp-match #px"(\\p{L}|\\p{P})?" subpat) => car]
-                                [else ""]))
+                             [(regexp-match #px"(\\p{L}|\\p{P})?" subpat) => car]
+                             [else ""]))
                (define num (cond
-                                [(regexp-match #px"\\d" subpat) => (compose1 string->natural car)]
-                                [else 0]))
+                             [(regexp-match #px"\\d" subpat) => (compose1 string->natural car)]
+                             [else 0]))
                (values str num)))
   (list (string-append* strs) nums))
+
 
 (module+ test
   (require rackunit)
@@ -55,10 +56,16 @@
   (check-equal? (string->hashpair "'ý4") '("'ý" (0 0 4)))
   (check-equal? (string->hashpair "’ý4") '("’ý" (0 0 4)))
   (check-equal? (string->hashpair "4ý-") '("ý-" (4 0 0)))
-  (check-equal? (string->hashpair ".ach4") '(".ach" (0 0 0 0 4)))
-  (check-equal? (string->hashpair ".ad4der") '(".adder" (0 0 0 4 0 0 0)))
-  (check-equal? (string->hashpair ".af1t") '(".aft" (0 0 0 1 0)))
-  (check-equal? (string->hashpair ".al3t") '(".alt" (0 0 0 3 0))))
+  (check-equal? (string->hashpair ".ach4") '(".ach" (0 0 0 0 4))))
+
+
+(define (apply-map-max patterns)
+  ;; each pattern is a list of numbers
+  ;; all the patterns have the same length
+  (cond
+    [(empty? patterns) empty] ; special case
+    [(= 1 (length patterns)) (car patterns)] ; no competition for max
+    [else (apply map (λ xs (apply max xs)) patterns)])) ; run max against parallel elements
 
 
 (define (make-points word)
@@ -67,30 +74,25 @@
   (define word-with-dots (format ".~a." (string-downcase word)))
   (define matching-patterns 
     (cond
-      [(hash-has-key? (current-word-cache) word-with-dots) (list (hash-ref (current-word-cache) word-with-dots))]
-      [(hash-has-key? (current-exceptions) word-with-dots) (list (hash-ref (current-exceptions) word-with-dots))]
-      
+      [(or (hash-ref (current-word-cache) word-with-dots #f)
+           (hash-ref (current-exceptions) word-with-dots #f)) => list]
       [else
-       (let ([word-as-list (string->list word-with-dots)])
-         ;; ensures there's at least one (null) element in return value
-         (define starting-value (make-list (add1 (length word-as-list)) 0))
-         (reverse (for*/fold ([acc (cons starting-value null)])
-                             ([len (in-range (length word-as-list))] 
-                              [index (in-range (- (length word-as-list) len))])
-                    (define substring (list->string (take (drop word-as-list index) (add1 len))))
-                    (cond
-                      [(hash-has-key? (current-patterns) substring)
-                       (define value (hash-ref (current-patterns) substring))
-                       ;; put together head padding + value + tail padding
-                       (define pattern-to-add (append (make-list index 0) value (make-list (- (add1 (length word-as-list)) (length value) index) 0)))
-                       (cons pattern-to-add acc)]
-                      [else acc]))))])) 
-  
-  (define (apply-map-max xss)
-    (if (ormap empty? (list xss (car xss))) 
-        empty
-        (cons (apply max (map car xss))
-              (apply-map-max (map cdr xss)))))
+       (define word-as-list (string->list word-with-dots))
+       (define word-as-list-length (length word-as-list))
+       ;; ensures there's at least one (null) element in return value
+       (define starting-value (make-list (add1 word-as-list-length) 0))
+       (reverse (for*/fold ([acc (cons starting-value null)])
+                           ([len (in-range word-as-list-length)] 
+                            [index (in-range (- word-as-list-length len))])
+                  (define substr (list->string (take (drop word-as-list index) (add1 len))))
+                  (cond
+                    [(hash-has-key? (current-patterns) substr)
+                     (define value (hash-ref (current-patterns) substr))
+                     ;; put together head padding + value + tail padding
+                     (define pattern-to-add
+                       (append (make-list index 0) value (make-list (- (add1 word-as-list-length) (length value) index) 0)))
+                     (cons pattern-to-add acc)]
+                    [else acc])))])) 
   
   (define max-value-pattern (apply-map-max matching-patterns))
   (cache-word (cons word-with-dots max-value-pattern))
@@ -137,8 +139,7 @@
       (make-pieces word)))
 
 ;; joiner contract allows char or string; this coerces to string.
-(define (joiner->string joiner)
-  (format "~a" joiner))
+(define (joiner->string joiner) (format "~a" joiner))
 
 (define (apply-proc proc x [omit-string (λ(x) #f)] [omit-txexpr (λ(x) #f)])
   (let loop ([x x])
