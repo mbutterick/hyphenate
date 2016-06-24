@@ -14,9 +14,7 @@
                      sugar/define
                      (only-in xml xexpr/c)
                      (prefix-in core: hyphenate/private/core)
-                     hyphenate/private/params
                      patterns-path exceptions-path)
-            (provide (all-from-out hyphenate/private/params))
             
             (module+ safe
               ;; An exception-word is a string of word characters or hyphens.
@@ -35,10 +33,13 @@
                          #:min-left-length (or/c (and/c integer? positive?) #f)
                          #:min-right-length (or/c (and/c integer? positive?) #f)) . ->* . xexpr/c)
               (make-keyword-procedure
-               (λ (kws kw-args . rest)
-                 (parameterize ([current-word-cache (make-hash (map (λ(xs) (apply cons xs)) exceptions))]
-                                [current-patterns patterns])
-                   (keyword-apply core:hyphenate kws kw-args rest)))))
+               ;; put caches here so they can persist across successive invocations of the function.
+               ;; but remain distinct between instantiations of this module (say, us vs fr)
+               ;; pass them as arguments to the core:hyphenate func
+               (let ([word-cache exceptions] ; preload exceptions
+                     [pattern-cache patterns])
+                 (λ (kws kw-args . rest)
+                   (keyword-apply core:hyphenate kws kw-args (list* word-cache pattern-cache rest))))))
             
             (define+provide+safe unhyphenate
               ((xexpr/c) ((or/c char? string?) 

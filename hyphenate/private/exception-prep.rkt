@@ -14,4 +14,5 @@
        #'(module exception-prep racket/base
            (require racket/string racket/list hyphenate/private/core)
            (provide exceptions)
-           (define exceptions (map exception-word->word+pattern (string-split str))))))))
+           (define exceptions
+             (make-hash (map (λ(xs) (apply cons xs)) (map exception-word->word+pattern (string-split str))))))))))

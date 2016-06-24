@@ -1,5 +1,5 @@
 #lang racket/base
-(require txexpr/base racket/string racket/list "params.rkt")
+(require txexpr/base racket/string racket/list)
 (provide hyphenate unhyphenate word->hyphenation-points exception-word->word+pattern string->hashpair)
 
 (module+ test
@@ -29,13 +29,13 @@
   (check-equal? (exception-word->word+pattern "sn-ôw-ma-n") '("snôwman" (0 1 0 1 0 1 0))))
 
 
-(define (add-exception-word word)
+(define (add-exception-word word-cache word)
   ;; `hash-set!` not `hash-ref!`, because we want an exception to override an existing value
-  (apply hash-set! (current-word-cache) (exception-word->word+pattern word)))
+  (apply hash-set! word-cache (exception-word->word+pattern word)))
 
 
-(define (remove-exception-word word)
-  (hash-remove! (current-word-cache) (string-replace word "-" "")))
+(define (remove-exception-word word-cache word)
+  (hash-remove! word-cache (string-replace word "-" "")))
 
 
 (define (string->natural i)
@@ -95,8 +95,8 @@
   (check-equal? (calculate-max-pattern '((1 2 3) (2 3 1) (3 1 2))) '(3 3 3)))
 
 
-(define (make-points word)
-  (hash-ref! (current-word-cache) word 
+(define (make-points word word-cache pattern-cache)
+  (hash-ref! word-cache word 
              (λ () ; compute pattern when missing from cache
                (define word-with-dots (format ".~a." (string-downcase word)))
                (define word-length (string-length word-with-dots))
@@ -106,7 +106,7 @@
                  (for*/list ([start (in-range word-length)] 
                              [end (in-range start word-length)]
                              [substr (in-value (substring word-with-dots start (add1 end)))]
-                             [partial-pattern (in-value (hash-ref (current-patterns) substr #f))]
+                             [partial-pattern (in-value (hash-ref pattern-cache substr #f))]
                              #:when partial-pattern)
                             ;; pad out partial-pattern to full length
                             ;; (so we can compare patterns to find max value for each slot)
@@ -124,7 +124,8 @@
 
 
 ;; Find hyphenation points in a word. This is not quite synonymous with syllables.
-(define (word->hyphenation-points word 
+(define (word->hyphenation-points word
+                                  word-cache pattern-cache
                                   [min-length #f] 
                                   [min-left-length #f] 
                                   [min-right-length #f])
@@ -136,7 +137,7 @@
      ;; to create a no-hyphenation zone of length n, zero out the first n-1 points
      ;; and the last n points (because the last value in points is always superfluous)
      (define word-points
-       (let* ([points (make-points word)]
+       (let* ([points (make-points word word-cache pattern-cache)]
               [left-zeroes (min (or min-left-length default-min-left-length) (length points))]
               [right-zeroes (min (or min-right-length default-min-right-length) (length points))])
          (for/list ([(point idx) (in-indexed points)])
@@ -169,7 +170,7 @@
       [else x])))
 
 
-(define (hyphenate x [joiner default-joiner] 
+(define (hyphenate word-cache pattern-cache x [joiner default-joiner] 
                    #:exceptions [extra-exceptions empty]  
                    #:min-length [min-length default-min-length]
                    #:min-left-length [min-left-length default-min-left-length]
@@ -179,17 +180,17 @@
                    #:omit-txexpr [omit-txexpr? (λ(x) #f)])
   
   ;; todo?: connect this regexp pattern to the one used in word? predicate
-  (for-each add-exception-word extra-exceptions)
+  (for-each (λ(ee) (add-exception-word word-cache ee))  extra-exceptions)
   (define word-pattern #px"\\w+") ;; more restrictive than exception-word
   (define (replacer word . words)
     (if (not (omit-word? word)) 
-        (string-join (word->hyphenation-points word min-length min-left-length min-right-length) (joiner->string joiner)) 
+        (string-join (word->hyphenation-points word word-cache pattern-cache min-length min-left-length min-right-length) (joiner->string joiner)) 
         word))
   (define (insert-hyphens text) (regexp-replace* word-pattern text replacer))  
   (define result (apply-proc insert-hyphens x omit-string? omit-txexpr?))
   ;; deleting from the main cache is cheaper than having to do two cache lookups for every word
   ;; (missing words will just be regenerated later)
-  (for-each remove-exception-word extra-exceptions)
+  (for-each (λ (ee) (remove-exception-word word-cache ee)) extra-exceptions)
   result)
 
 

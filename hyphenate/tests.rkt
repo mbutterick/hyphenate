@@ -1,6 +1,5 @@
 #lang racket/base
-(require (submod hyphenate safe) txexpr/base rackunit "private/params.rkt")
-(require/expose "private/core.rkt" [add-exception-word])
+(require (submod hyphenate safe) txexpr/base rackunit)
 
 (define omit-em-tag (λ(x) (member (car x) '(em))))
 (define omit-p-tag (λ(x) (member (car x) '(p))))
@@ -70,9 +69,6 @@
 (check-equal? (hyphenate "polymorphism" #\* #:exceptions '("polymo-rphism")) "polymo*rphism")
 (check-equal? (hyphenate "polymorphism" #\* #:exceptions '("polymo-rphism")) "polymo*rphism")
 (check-equal? (hyphenate "polymorphism" #\-) "poly-mor-phism") ; exceptions are temporary
-
-(add-exception-word "snow-man")
-(check-equal? (hyphenate "snowman" "-") "snow-man")
 
 (check-equal? (hyphenate "formidable" #\-) "for-mi-da-ble")
 
