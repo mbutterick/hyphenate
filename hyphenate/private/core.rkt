@@ -76,14 +76,12 @@
 (define (calculate-max-pattern patterns)
   ;; each pattern is a list of numbers
   ;; all the patterns have the same length
-  (if (empty? patterns)
-      empty ; special case
-      (apply map (λ xs (apply max xs)) patterns))) ; run max against parallel elements
+  ;; run max against parallel elements
+  (apply map (λ xs (apply max xs)) patterns)) 
 
 
 (module+ test
   (require rackunit)
-  (check-equal? (calculate-max-pattern empty) empty)
   (check-equal? (calculate-max-pattern '((1 0 0))) '(1 0 0))
   (check-equal? (calculate-max-pattern '((1 0 0) (0 1 0))) '(1 1 0))
   (check-equal? (calculate-max-pattern '((1 0 0) (0 1 0) (0 0 1))) '(1 1 1))
@@ -96,23 +94,20 @@
     (hash-ref! (current-word-cache) word-with-dots 
                (λ () ; compute pattern when missing from cache
                  (define word-length (string-length word-with-dots))
-                 (define default-return-value (make-list (add1 word-length) 0))
+                 (define default-zero-pattern (make-list (add1 word-length) 0))
+                 ;; walk through all the substrings and see if there's a matching pattern.
                  (define matching-patterns
-                   ;; walk through all the substrings and see if there's a matching pattern.
-                   ;; if so, pad it out to full length (so we can `calculate-max-pattern` later on)
-                   (for*/fold ([acc (cons default-return-value null)])
-                              ([start (in-range word-length)] 
+                   (for*/list ([start (in-range word-length)] 
                                [end (in-range start word-length)]
                                [substr (in-value (substring word-with-dots start (add1 end)))]
-                               #:when (hash-has-key? (current-patterns) substr))
-                     (define partial-pattern (hash-ref (current-patterns) substr))
-                     (define full-length-pattern
-                       ;; put together head padding + value + tail padding
-                       (append (make-list start 0)
-                               partial-pattern
-                               (make-list (- (add1 word-length) (length partial-pattern) start) 0)))
-                     (cons full-length-pattern acc)))
-                 (calculate-max-pattern matching-patterns))))
+                               [partial-pattern (in-value (hash-ref (current-patterns) substr #f))]
+                               #:when partial-pattern)
+                              ;; pad out partial-pattern to full length
+                              ;; (so we can compare patterns to find max value for each slot)
+                              (define left-zeroes (make-list start 0))
+                              (define right-zeroes (make-list (- (add1 word-length) (length partial-pattern) start) 0))
+                              (append left-zeroes partial-pattern right-zeroes)))
+                 (calculate-max-pattern (cons default-zero-pattern matching-patterns)))))
   
   ;; for point list,
   ;; drop first two elements because they represent hyphenation weight
@@ -171,7 +166,6 @@
        (make-txexpr (get-tag x) (get-attrs x) (map loop (get-elements x)))]
       [else x])))
 
-(require sugar/debug)
 
 (define (hyphenate x [joiner default-joiner] 
                    #:exceptions [extra-exceptions empty]  
