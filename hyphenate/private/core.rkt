@@ -11,15 +11,13 @@
 (define default-min-right-length 2)
 (define default-joiner #\u00AD)
 
-(define (cache-word pat)
-  (hash-set! (current-word-cache) (car pat) (cdr pat)))
-
 
 ;; Convert the hyphenated pattern into a point array for use later.
 (define (convert-exception-word exception)
   (define (make-key x) (format ".~a." (string-replace x "-" "")))
   (define (make-value x)
     `(0 ,@(map (λ(x) (if (equal? x "-") 1 0)) (regexp-split #px"\\p{L}" x)) 0))
+  ;; use list instead of cons because value is itself a list, and consing will muddy the waters
   (list (make-key exception) (make-value exception)))
 
 
@@ -30,7 +28,7 @@
 
 
 (define (add-exception-word word)
-  (current-exceptions (apply hash-set (current-exceptions) (convert-exception-word word))))
+  (apply hash-set! (current-word-cache) (convert-exception-word word)))
 
 
 (define (string->natural i)
@@ -75,7 +73,7 @@
   (check-equal? (string->hashpair ".ach4") '(".ach" (0 0 0 0 4))))
 
 
-(define (apply-map-max patterns)
+(define (calculate-max-pattern patterns)
   ;; each pattern is a list of numbers
   ;; all the patterns have the same length
   (if (empty? patterns)
@@ -85,40 +83,36 @@
 
 (module+ test
   (require rackunit)
-  (check-equal? (apply-map-max empty) empty)
-  (check-equal? (apply-map-max '((1 0 0))) '(1 0 0))
-  (check-equal? (apply-map-max '((1 0 0) (0 1 0))) '(1 1 0))
-  (check-equal? (apply-map-max '((1 0 0) (0 1 0) (0 0 1))) '(1 1 1))
-  (check-equal? (apply-map-max '((1 2 3) (2 3 1) (3 1 2))) '(3 3 3)))
+  (check-equal? (calculate-max-pattern empty) empty)
+  (check-equal? (calculate-max-pattern '((1 0 0))) '(1 0 0))
+  (check-equal? (calculate-max-pattern '((1 0 0) (0 1 0))) '(1 1 0))
+  (check-equal? (calculate-max-pattern '((1 0 0) (0 1 0) (0 0 1))) '(1 1 1))
+  (check-equal? (calculate-max-pattern '((1 2 3) (2 3 1) (3 1 2))) '(3 3 3)))
 
 
 (define (make-points word)
-  ;; walk through all the substrings and see if there's a matching pattern.
-  ;; if so, pad it out to full length (so we can `apply-map-max` later on)
   (define word-with-dots (format ".~a." (string-downcase word)))
-  (define matching-patterns
-    (cond
-      [(or (hash-ref (current-word-cache) word-with-dots #f)
-           (hash-ref (current-exceptions) word-with-dots #f)) => list]
-      [else
-       (define word-length (string-length word-with-dots))
-       ;; ensures there's at least one (null) element in return value
-       (define starting-value (make-list (add1 word-length) 0))
-       (for*/fold ([acc (cons starting-value null)])
-                  ([start (in-range word-length)] 
-                   [end (in-range start word-length)]
-                   [substr (in-value (substring word-with-dots start (add1 end)))]
-                   #:when (hash-has-key? (current-patterns) substr))
-         (define partial-pattern (hash-ref (current-patterns) substr))
-         ;; put together head padding + value + tail padding
-         (define full-length-pattern
-           (append (make-list start 0)
-                   partial-pattern
-                   (make-list (- (add1 word-length) (length partial-pattern) start) 0)))
-         (cons full-length-pattern acc))]))
-  
-  (define max-value-pattern (apply-map-max matching-patterns))
-  (cache-word (cons word-with-dots max-value-pattern))
+  (define max-pattern
+    (hash-ref! (current-word-cache) word-with-dots 
+               (λ () ; compute pattern when missing from cache
+                 (define word-length (string-length word-with-dots))
+                 (define default-return-value (make-list (add1 word-length) 0))
+                 (define matching-patterns
+                   ;; walk through all the substrings and see if there's a matching pattern.
+                   ;; if so, pad it out to full length (so we can `calculate-max-pattern` later on)
+                   (for*/fold ([acc (cons default-return-value null)])
+                              ([start (in-range word-length)] 
+                               [end (in-range start word-length)]
+                               [substr (in-value (substring word-with-dots start (add1 end)))]
+                               #:when (hash-has-key? (current-patterns) substr))
+                     (define partial-pattern (hash-ref (current-patterns) substr))
+                     (define full-length-pattern
+                       ;; put together head padding + value + tail padding
+                       (append (make-list start 0)
+                               partial-pattern
+                               (make-list (- (add1 word-length) (length partial-pattern) start) 0)))
+                     (cons full-length-pattern acc)))
+                 (calculate-max-pattern matching-patterns))))
   
   ;; for point list,
   ;; drop first two elements because they represent hyphenation weight
@@ -126,7 +120,7 @@
   ;; drop last element because it represents hyphen after last "."
   ;; after you drop these two, then each number corresponds to
   ;; whether a hyphen goes after that letter.
-  (drop-right (drop max-value-pattern 2) 1))
+  (drop-right (drop max-pattern 2) 1))
 
 
 ;; Find hyphenation points in a word. This is not quite synonymous with syllables.
@@ -177,6 +171,7 @@
        (make-txexpr (get-tag x) (get-attrs x) (map loop (get-elements x)))]
       [else x])))
 
+(require sugar/debug)
 
 (define (hyphenate x [joiner default-joiner] 
                    #:exceptions [extra-exceptions empty]  
