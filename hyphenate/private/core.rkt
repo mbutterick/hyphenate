@@ -5,6 +5,7 @@
 (module+ test
   (require rackunit))
 
+
 ;; module default values
 (define default-min-length 5)
 (define default-min-left-length 2)
@@ -12,32 +13,24 @@
 (define default-joiner #\u00AD)
 
 
-(define (trim-points points)
-  ;; for point list generated from a pattern,
-  ;; drop first two elements because they represent hyphenation weight
-  ;; before the starting "." and between "." and the first letter.
-  ;; drop last element because it represents hyphen after last "."
-  ;; after you drop these two, then each number corresponds to
-  ;; whether a hyphen goes after that letter.
-  (drop-right (drop points 2) 1))
-
-
-;; Convert the hyphenated pattern into a point array for use later.
-(define (convert-exception-word exception)
-  (define (make-key x) (format ".~a." (string-replace x "-" "")))
-  (define (make-value x)
-    (append (list 0) (map (λ(x) (if (equal? x "-") 1 0)) (regexp-split #px"\\p{L}" x)) (list 0)))
-  ;; use list instead of cons because value is itself a list, and consing will muddy the waters
-  (list (make-key exception) (trim-points (make-value exception))))
+(define (convert-exception-word ew)
+  ;; an exception word indicates its breakpoints with added hyphens
+  (define word (string-replace ew "-" ""))
+  ;; pattern has same number of points as word letters. 1 marks hyphenation point; 0 no hyphenation
+  (define points
+    (cdr (map (λ(x) (if (equal? x "-") 1 0)) (regexp-split #px"\\p{L}" ew))))
+  ;; use list here so we can `apply` in `add-exception-word`
+  (list word points))
 
 
 (module+ test
-  (check-equal? (convert-exception-word "snôw-man") '(".snôwman." (0 0 0 1 0 0 0)))
-  (check-equal? (convert-exception-word "snôwman") '(".snôwman." (0 0 0 0 0 0 0)))
-  (check-equal? (convert-exception-word "sn-ôw-ma-n") '(".snôwman." (0 1 0 1 0 1 0))))
+  (check-equal? (convert-exception-word "snôw-man") '("snôwman" (0 0 0 1 0 0 0)))
+  (check-equal? (convert-exception-word "snôwman") '("snôwman" (0 0 0 0 0 0 0)))
+  (check-equal? (convert-exception-word "sn-ôw-ma-n") '("snôwman" (0 1 0 1 0 1 0))))
 
 
 (define (add-exception-word word)
+  ;; `hash-set!` not `hash-ref!`, because we want an exception to override an existing value
   (apply hash-set! (current-word-cache) (convert-exception-word word)))
 
 
@@ -99,9 +92,9 @@
 
 
 (define (make-points word)
-  (define word-with-dots (format ".~a." (string-downcase word)))
-  (hash-ref! (current-word-cache) word-with-dots 
+  (hash-ref! (current-word-cache) word 
              (λ () ; compute pattern when missing from cache
+               (define word-with-dots (format ".~a." (string-downcase word)))
                (define word-length (string-length word-with-dots))
                (define default-zero-pattern (make-list (add1 word-length) 0))
                ;; walk through all the substrings and see if there's a matching pattern.
@@ -116,7 +109,14 @@
                             (define left-zeroes (make-list start 0))
                             (define right-zeroes (make-list (- (add1 word-length) (length partial-pattern) start) 0))
                             (append left-zeroes partial-pattern right-zeroes)))
-               (trim-points (calculate-max-pattern (cons default-zero-pattern matching-patterns))))))
+               (define max-pattern (calculate-max-pattern (cons default-zero-pattern matching-patterns)))
+               ;; for point list generated from a pattern,
+               ;; drop first two elements because they represent hyphenation weight
+               ;; before the starting "." and between "." and the first letter.
+               ;; drop last element because it represents hyphen after last "."
+               ;; after you drop these two, then each number corresponds to
+               ;; whether a hyphen goes after that letter.
+               (drop-right (drop max-pattern 2) 1))))
 
 
 ;; Find hyphenation points in a word. This is not quite synonymous with syllables.
@@ -141,12 +141,12 @@
                        0))))
      
      ;; odd-valued points in the pattern denote hyphenation points
-     (define odd-points (for/list ([(wp idx) (in-indexed word-points)]
+     (define odd-point-indexes (for/list ([(wp idx) (in-indexed word-points)]
                                    #:when (odd? wp))
                                   idx))
      
      ;; the hyphenation goes after the indexed letter, so add1 to the raw points for slicing
-     (define breakpoints (append (list 0) (map add1 odd-points) (list (string-length word))))
+     (define breakpoints (append (list 0) (map add1 odd-point-indexes) (list (string-length word))))
      (for/list ([start (in-list breakpoints)]
                 [end (in-list (cdr breakpoints))]) ; shorter list controls exit of loop
                (substring word start end))]))
