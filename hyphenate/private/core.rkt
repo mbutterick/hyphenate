@@ -145,9 +145,9 @@
                                   idx))
      
      ;; the hyphenation goes after the indexed letter, so add1 to the raw points for slicing
-     (define odd-points-plus-one (map add1 odd-points))
-     (for/list ([start (in-list (cons 0 odd-points-plus-one))]
-                [end (in-list (append odd-points-plus-one (list (string-length word))))])
+     (define breakpoints (append (list 0) (map add1 odd-points) (list (string-length word))))
+     (for/list ([start (in-list breakpoints)]
+                [end (in-list (cdr breakpoints))]) ; shorter list controls exit of loop
                (substring word start end))]))
 
 
