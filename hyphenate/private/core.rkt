@@ -1,6 +1,6 @@
 #lang racket/base
 (require txexpr/base racket/string racket/list "params.rkt")
-(provide hyphenate unhyphenate word->hyphenation-points convert-exception-word string->hashpair)
+(provide hyphenate unhyphenate word->hyphenation-points exception-word->word+pattern string->hashpair)
 
 (module+ test
   (require rackunit))
@@ -13,7 +13,7 @@
 (define default-joiner #\u00AD)
 
 
-(define (convert-exception-word ew)
+(define (exception-word->word+pattern ew)
   ;; an exception word indicates its breakpoints with added hyphens
   (define word (string-replace ew "-" ""))
   ;; pattern has same number of points as word letters. 1 marks hyphenation point; 0 no hyphenation
@@ -24,14 +24,18 @@
 
 
 (module+ test
-  (check-equal? (convert-exception-word "snôw-man") '("snôwman" (0 0 0 1 0 0 0)))
-  (check-equal? (convert-exception-word "snôwman") '("snôwman" (0 0 0 0 0 0 0)))
-  (check-equal? (convert-exception-word "sn-ôw-ma-n") '("snôwman" (0 1 0 1 0 1 0))))
+  (check-equal? (exception-word->word+pattern "snôw-man") '("snôwman" (0 0 0 1 0 0 0)))
+  (check-equal? (exception-word->word+pattern "snôwman") '("snôwman" (0 0 0 0 0 0 0)))
+  (check-equal? (exception-word->word+pattern "sn-ôw-ma-n") '("snôwman" (0 1 0 1 0 1 0))))
 
 
 (define (add-exception-word word)
   ;; `hash-set!` not `hash-ref!`, because we want an exception to override an existing value
-  (apply hash-set! (current-word-cache) (convert-exception-word word)))
+  (apply hash-set! (current-word-cache) (exception-word->word+pattern word)))
+
+
+(define (remove-exception-word word)
+  (hash-remove! (current-word-cache) (string-replace word "-" "")))
 
 
 (define (string->natural i)
@@ -182,7 +186,11 @@
         (string-join (word->hyphenation-points word min-length min-left-length min-right-length) (joiner->string joiner)) 
         word))
   (define (insert-hyphens text) (regexp-replace* word-pattern text replacer))  
-  (apply-proc insert-hyphens x omit-string? omit-txexpr?))
+  (define result (apply-proc insert-hyphens x omit-string? omit-txexpr?))
+  ;; deleting from the main cache is cheaper than having to do two cache lookups for every word
+  ;; (missing words will just be regenerated later)
+  (for-each remove-exception-word extra-exceptions)
+  result)
 
 
 (define (unhyphenate x [joiner default-joiner] 

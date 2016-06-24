@@ -68,6 +68,8 @@
 (check-equal? (hyphenate "polymorphism" #\- #:min-left-length 3 #:min-right-length 7) "poly-morphism")
 (check-equal? (hyphenate "polymorphism" #\- #:min-left-length 7 #:min-right-length 7) "polymorphism")
 (check-equal? (hyphenate "polymorphism" #\* #:exceptions '("polymo-rphism")) "polymo*rphism")
+(check-equal? (hyphenate "polymorphism" #\* #:exceptions '("polymo-rphism")) "polymo*rphism")
+(check-equal? (hyphenate "polymorphism" #\-) "poly-mor-phism") ; exceptions are temporary
 
 (add-exception-word "snow-man")
 (check-equal? (hyphenate "snowman" "-") "snow-man")
