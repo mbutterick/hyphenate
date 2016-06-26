@@ -52,8 +52,6 @@
 
 
 (define (string->hashpair pat)
-  ;; first convert the pattern to a list of alternating letters and numbers.
-  ;; insert zeroes where there isn't a number in the pattern.
   (define-values (strs nums)
     (for/lists (strs nums)
                ;; using unicode-aware regexps to allow unicode hyphenation patterns
@@ -97,15 +95,17 @@
 
 (define (make-points word word-cache pattern-cache)
   (hash-ref! word-cache word 
-             (λ () ; compute pattern when missing from cache
-               (define word-with-dots (format ".~a." (string-downcase word)))
-               (define word-length (string-length word-with-dots))
+             (λ ()
+               ;; dots are used to denote the beginning and end of the word when matching patterns
+               (define boundary-marker ".")
+               (define word-with-boundaries (format "~a~a~a" boundary-marker (string-downcase word) boundary-marker))
+               (define word-length (string-length word-with-boundaries))
                (define default-zero-pattern (make-list (add1 word-length) 0))
                ;; walk through all the substrings and see if there's a matching pattern.
                (define matching-patterns
                  (for*/list ([start (in-range word-length)] 
                              [end (in-range start word-length)]
-                             [substr (in-value (substring word-with-dots start (add1 end)))]
+                             [substr (in-value (substring word-with-boundaries start (add1 end)))]
                              [partial-pattern (in-value (hash-ref pattern-cache substr #f))]
                              #:when partial-pattern)
                             ;; pad out partial-pattern to full length
@@ -147,8 +147,8 @@
      
      ;; odd-valued points in the pattern denote hyphenation points
      (define odd-point-indexes (for/list ([(wp idx) (in-indexed word-points)]
-                                   #:when (odd? wp))
-                                  idx))
+                                          #:when (odd? wp))
+                                         idx))
      
      ;; the hyphenation goes after the indexed letter, so add1 to the raw points for slicing
      (define breakpoints (append (list 0) (map add1 odd-point-indexes) (list (string-length word))))
