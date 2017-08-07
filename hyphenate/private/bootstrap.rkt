@@ -34,7 +34,7 @@
      (λ (kws kw-args . rest)
        (keyword-apply core:hyphenate kws kw-args word-cache pattern-cache rest)))))
 
-(define unhyphenate
+(define (make-unhyphenate-function)
   (make-keyword-procedure
    (λ (kws kw-args . rest)
      (keyword-apply core:unhyphenate kws kw-args rest))))
@@ -57,4 +57,6 @@
            (define+provide+safe hyphenate
              hyphenate/c
              (make-hyphenate-function PATTERNS-ID EXCEPTIONS-ID))
-           (provide+safe [unhyphenate unhyphenate/c])))]))
+           (define+provide+safe unhyphenate
+             unhyphenate/c
+             (make-unhyphenate-function))))]))
