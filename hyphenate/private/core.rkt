@@ -106,7 +106,7 @@
                  (for*/list ([start (in-range word-length)] 
                              [end (in-range start word-length)]
                              [substr (in-value (substring word-with-boundaries start (add1 end)))]
-                             [partial-pattern (in-value (hash-ref pattern-cache substr #f))]
+                             [partial-pattern (in-value (hash-ref pattern-cache (string->symbol substr) #f))]
                              #:when partial-pattern)
                             ;; pad out partial-pattern to full length
                             ;; (so we can compare patterns to find max value for each slot)

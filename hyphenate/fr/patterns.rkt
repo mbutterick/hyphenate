@@ -1,50 +1,47 @@
 #lang hyphenate/private/pattern-prep
 
-#|
 
-French hyphenation patterns
-Based on v.3.0 of the OpenOffice.org French hyphenation patterns, released under the LGPL
-Downloaded from http://www.dicollecte.org/download/fr/hyph-fr-v3.0.zip
-
-Original license:
-___________________________________________________________________
-
-  French word hyphenation patterns
-  Version 3.0
-
-  Language: French (fr).
-
-  License:  GNU LGPL.
-
-  Origin:   Based on the TeX hyphenation tables *hyph-fr.tex*,
-            renamed (June 2008) from *frhyph.tex* (V2.12, 2002/12/11)
-            for consistency with other files with hyphenation patterns
-            in hyph-utf8 package. See http://tug.org/tex-hyphen for more details.
-            The TeX hyphenation tables are released under the LaTeX Project
-            Public License (LPPL)  --  http://www.latex-project.org/lppl.txt
-
-  License:  OpenOffice.org adaptions of this package are licensed under the
-            GNU Lesser General Public License (LGPL)
-            version 2.1 or higher  --  http://www.gnu.org/licenses/
-
-  Authors:
-            3.0     Marc Lodewijck <mlodewijck@gmail.com>
-            2.0     Paul Pichaureau <paul.pichaureau@alcandre.net>
-            1.0     Blaise Drayer <blaise@drayer.ch>
-
-  Log:
-            3.0     New revised and expanded version:
-                      +  Conversion to UTF-8 Unicode encoding
-                      +  Processing of hyphenated compounds
-                      +  Correction of altered patterns
-            2.0     Fix for words with apostrophe
-            1.0     First conversion
-
-  This dictionary is based on syllable matching patterns and therefore should
-  be usable under other variations of French.
-___________________________________________________________________
-
-|#
+;French hyphenation patterns
+;Based on v.3.0 of the OpenOffice.org French hyphenation patterns, released under the LGPL
+;Downloaded from http://www.dicollecte.org/download/fr/hyph-fr-v3.0.zip
+;
+;Original license:
+;___________________________________________________________________
+;
+;  French word hyphenation patterns
+;  Version 3.0
+;
+;  Language: French (fr).
+;
+;  License:  GNU LGPL.
+;
+;  Origin:   Based on the TeX hyphenation tables *hyph-fr.tex*,
+;            renamed (June 2008) from *frhyph.tex* (V2.12, 2002/12/11)
+;            for consistency with other files with hyphenation patterns
+;            in hyph-utf8 package. See http://tug.org/tex-hyphen for more details.
+;            The TeX hyphenation tables are released under the LaTeX Project
+;            Public License (LPPL)  --  http://www.latex-project.org/lppl.txt
+;
+;  License:  OpenOffice.org adaptions of this package are licensed under the
+;            GNU Lesser General Public License (LGPL)
+;            version 2.1 or higher  --  http://www.gnu.org/licenses/
+;
+;  Authors:
+;            3.0     Marc Lodewijck <mlodewijck@gmail.com>
+;            2.0     Paul Pichaureau <paul.pichaureau@alcandre.net>
+;            1.0     Blaise Drayer <blaise@drayer.ch>
+;
+;  Log:
+;            3.0     New revised and expanded version:
+;                      +  Conversion to UTF-8 Unicode encoding
+;                      +  Processing of hyphenated compounds
+;                      +  Correction of altered patterns
+;            2.0     Fix for words with apostrophe
+;            1.0     First conversion
+;
+;  This dictionary is based on syllable matching patterns and therefore should
+;  be usable under other variations of French.
+;___________________________________________________________________
 
 2'2
 .a4
