@@ -1,3 +1,2 @@
-#lang racket/base
-(require "private/bootstrap.rkt")
-(build-main fr)
+#lang s-exp "private/bootstrap.rkt"
+fr
