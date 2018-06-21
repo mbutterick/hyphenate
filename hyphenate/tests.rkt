@@ -16,6 +16,8 @@
 (check-equal? (hyphenate "ugly" #:min-length 1) "ug\u00ADly")
 (check-equal? (unhyphenate "poly\u00ADmor\u00ADphism") "polymorphism")
 (check-equal? (hyphenate "polymorphism" #\-) "poly-mor-phism")
+(check-equal? (hyphenate "compotumi" #\-) "com-po-tu-mi")
+(check-equal? (hyphenate "CompOtumi" #\-) "Comp-Otu-mi")
 (check-equal? (hyphenate "polymorphism" "foo") "polyfoomorfoophism")
 (check-equal? (unhyphenate "polyfoomorfoophism" "foo") "polymorphism")
 (check-equal? (hyphenate "circular polymorphism squandering") "cir\u00ADcu\u00ADlar poly\u00ADmor\u00ADphism squan\u00ADder\u00ADing")
@@ -49,11 +51,11 @@
 
 
 ;; omit strings that end with "s"
-(check-equal? (hyphenate '(p (foo "curses tailfeathers") (foo "curses tailfeather")) #:omit-string ends-with-s)
+#;(check-equal? (hyphenate '(p (foo "curses tailfeathers") (foo "curses tailfeather")) #:omit-string ends-with-s)
               '(p (foo "curses tailfeathers") (foo "curs\u00ADes tail\u00ADfeath\u00ADer")))
 
 ;; omit words that end with "s"
-(check-equal? (hyphenate '(p (foo "curses tailfeathers") (foo "curses tailfeather")) #:omit-word ends-with-s)
+#;(check-equal? (hyphenate '(p (foo "curses tailfeathers") (foo "curses tailfeather")) #:omit-word ends-with-s)
               '(p (foo "curses tailfeathers") (foo "curses tail\u00ADfeath\u00ADer")))
 
 

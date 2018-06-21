@@ -58,13 +58,13 @@
                ;; a pattern is a list of subpatterns, each of which is a character possibly followed by a number.
                ;; also, the first position may just have a number.
                ([subpat (in-list (regexp-match* #px"^\\d?|(\\p{L}|\\p{P})\\d?" pat))])
-               (define str (cond
-                             [(regexp-match #px"(\\p{L}|\\p{P})?" subpat) => car]
-                             [else ""]))
-               (define num (cond
-                             [(regexp-match #px"\\d" subpat) => (compose1 string->natural car)]
-                             [else 0]))
-               (values str num)))
+      (define str (cond
+                    [(regexp-match #px"(\\p{L}|\\p{P})?" subpat) => car]
+                    [else ""]))
+      (define num (cond
+                    [(regexp-match #px"\\d" subpat) => (compose1 string->natural car)]
+                    [else 0]))
+      (values str num)))
   (list (string-append* strs) nums))
 
 
@@ -161,10 +161,14 @@
 (define (joiner->string joiner) (format "~a" joiner))
 
 
-(define (apply-proc proc x [omit-string (λ(x) #f)] [omit-txexpr (λ(x) #f)])
+(define (apply-proc proc x [omit-string (λ(x) #f)] [omit-txexpr (λ(x) #f)] [joiner default-joiner])
   (let loop ([x x])
     (cond
-      [(and (string? x) (not (omit-string x))) (proc x)]
+      [(and (string? x) (not (omit-string x)))
+       ;; handle intercapped words as capitalized pieces
+       (define letter-before-uc #px"(?<=\\p{Ll})(?=\\p{Lu}\\p{Ll})") ; match xXx but not xXX or XXX
+       (string-join (for/list ([x (in-list (string-split x letter-before-uc))])
+                              (proc x)) (joiner->string joiner))]
       [(and (txexpr? x) (not (omit-txexpr x))) 
        (make-txexpr (get-tag x) (get-attrs x) (map loop (get-elements x)))]
       [else x])))
@@ -187,7 +191,7 @@
         (string-join (word->hyphenation-points word word-cache pattern-cache min-length min-left-length min-right-length) (joiner->string joiner)) 
         word))
   (define (insert-hyphens text) (regexp-replace* word-pattern text replacer))  
-  (define result (apply-proc insert-hyphens x omit-string? omit-txexpr?))
+  (define result (apply-proc insert-hyphens x omit-string? omit-txexpr? joiner))
   ;; deleting from the main cache is cheaper than having to do two cache lookups for every word
   ;; (missing words will just be regenerated later)
   (for-each (λ (ee) (remove-exception-word word-cache ee)) extra-exceptions)
