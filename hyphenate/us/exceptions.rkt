@@ -21,3 +21,4 @@ law-yer-ing
 law-yer-ly
 oki-na
 oki-nas
+arc-min-ute
