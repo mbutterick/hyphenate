@@ -18,7 +18,7 @@
   (define word (string-replace ew "-" ""))
   ;; pattern has same number of points as word letters. 1 marks hyphenation point; 0 no hyphenation
   (define points
-    (cdr (map (λ(x) (if (equal? x "-") 1 0)) (regexp-split #px"\\p{L}" ew))))
+    (cdr (map (λ (x) (if (equal? x "-") 1 0)) (regexp-split #px"\\p{L}" ew))))
   ;; use list here so we can `apply` in `add-exception-word`
   (list word points))
 
@@ -161,7 +161,7 @@
 (define (joiner->string joiner) (format "~a" joiner))
 
 
-(define (apply-proc proc x [omit-string (λ(x) #f)] [omit-txexpr (λ(x) #f)] [joiner default-joiner])
+(define (apply-proc proc x [omit-string (λ (x) #f)] [omit-txexpr (λ (x) #f)] [joiner default-joiner])
   (let loop ([x x])
     (cond
       [(and (string? x) (not (omit-string x)))
@@ -179,29 +179,35 @@
                    #:min-length [min-length default-min-length]
                    #:min-left-length [min-left-length default-min-left-length]
                    #:min-right-length [min-right-length default-min-right-length]
-                   #:omit-word [omit-word? (λ(x) #f)]
-                   #:omit-string [omit-string? (λ(x) #f)]
-                   #:omit-txexpr [omit-txexpr? (λ(x) #f)])
+                   #:omit-word [omit-word? (λ (x) #f)]
+                   #:omit-string [omit-string? (λ (x) #f)]
+                   #:omit-txexpr [omit-txexpr? (λ (x) #f)])
   
   ;; todo?: connect this regexp pattern to the one used in word? predicate
-  (for-each (λ(ee) (add-exception-word word-cache ee))  extra-exceptions)
+  (for-each (λ (ee) (add-exception-word word-cache ee))  extra-exceptions)
   (define word-pattern #px"\\w+") ;; more restrictive than exception-word
   (define (replacer word . words)
-    (if (not (omit-word? word)) 
-        (string-join (word->hyphenation-points word word-cache pattern-cache min-length min-left-length min-right-length) (joiner->string joiner)) 
-        word))
-  (define (insert-hyphens text) (regexp-replace* word-pattern text replacer))  
-  (define result (apply-proc insert-hyphens x omit-string? omit-txexpr? joiner))
-  ;; deleting from the main cache is cheaper than having to do two cache lookups for every word
-  ;; (missing words will just be regenerated later)
-  (for-each (λ (ee) (remove-exception-word word-cache ee)) extra-exceptions)
-  result)
+    (if (omit-word? word) 
+        word
+        (string-join (word->hyphenation-points word
+                                               word-cache
+                                               pattern-cache
+                                               min-length
+                                               min-left-length
+                                               min-right-length)
+                     (joiner->string joiner))))
+  (define (insert-hyphens text) (regexp-replace* word-pattern text replacer))
+  (begin0
+    (apply-proc insert-hyphens x omit-string? omit-txexpr? joiner)
+    ;; deleting from the main cache is cheaper than having to do two cache lookups for every word
+    ;; (missing words will just be regenerated later)
+    (for-each (λ (ee) (remove-exception-word word-cache ee)) extra-exceptions)))
 
 
 (define (unhyphenate x [joiner default-joiner] 
-                     #:omit-word [omit-word? (λ(x) #f)]
-                     #:omit-string [omit-string? (λ(x) #f)]
-                     #:omit-txexpr [omit-txexpr? (λ(x) #f)])
+                     #:omit-word [omit-word? (λ (x) #f)]
+                     #:omit-string [omit-string? (λ (x) #f)]
+                     #:omit-txexpr [omit-txexpr? (λ (x) #f)])
   (define word-pattern (pregexp (format "[\\w~a]+" joiner)))
   (define (replacer word . words)
     (if (not (omit-word? word)) 

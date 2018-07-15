@@ -1,12 +1,12 @@
 #lang racket/base
 (require (submod hyphenate safe) txexpr/base rackunit)
 
-(define omit-em-tag (λ(x) (member (car x) '(em))))
-(define omit-p-tag (λ(x) (member (car x) '(p))))
-(define omit-foo-zam-tag (λ(x) (member (car x) '(foo zam))))
-(define ends-with-s (λ(x) (regexp-match #rx"s$" x)))
-(define omit-script-tag (λ(x) (member (car x) '(script))))
-(define tx-with-attr (λ(x) (with-handlers ([exn:fail? (λ(exn) #f)]) 
+(define omit-em-tag (λ (x) (member (car x) '(em))))
+(define omit-p-tag (λ (x) (member (car x) '(p))))
+(define omit-foo-zam-tag (λ (x) (member (car x) '(foo zam))))
+(define ends-with-s (λ (x) (regexp-match #rx"s$" x)))
+(define omit-script-tag (λ (x) (member (car x) '(script))))
+(define tx-with-attr (λ (x) (with-handlers ([exn:fail? (λ (exn) #f)]) 
                              (equal? (attr-ref x 'hyphens) "no-thanks"))))
 
 (check-equal? (hyphenate "edges") "edges") ;; word without matching patterns
