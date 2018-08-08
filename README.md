@@ -15,7 +15,7 @@ Import in standard mode:
 
     (require hyphenate)
     
-In safe mode (with contracts):
+Or in safe mode (adds contracts):
 
     (require (submod hyphenate safe))
     
