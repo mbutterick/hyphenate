@@ -185,7 +185,7 @@
   
   ;; todo?: connect this regexp pattern to the one used in word? predicate
   (for-each (λ (ee) (add-exception-word word-cache ee))  extra-exceptions)
-  (define word-pattern #px"\\w+") ;; more restrictive than exception-word
+  (define word-pattern #px"\\p{L}+") ;; more restrictive than exception-word
   (define (replacer word . words)
     (if (omit-word? word) 
         word
