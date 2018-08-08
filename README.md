@@ -6,8 +6,12 @@ Racket implementation of the Knuth–Liang hyphenation algorithm.
 Install from the command line like so:
 
     raco pkg install hyphenate
+    
+Later, you an update like so:
 
-Then require it in your Racket file, in standard mode:
+    raco pkg update hyphenate
+
+Import in standard mode:
 
     (require hyphenate)
     
