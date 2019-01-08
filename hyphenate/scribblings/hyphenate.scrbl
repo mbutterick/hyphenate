@@ -223,7 +223,7 @@ There is no way to use @racket[hyphenate] in ``polyglot'' mode, where English an
 
 @defmodule[#:multi (hyphenate/ru (submod hyphenate/ru safe))]
 
-Russian hyphenation is available by importing the module as @racketmodname[hyphenate/ru] or @racketmodname[(submod hyphenate/ru safe)] and using the @racket[hyphenate] function normally. (Hat tip to Natanael de Kross for the patterns.)
+Russian hyphenation is available by importing the module as @racketmodname[hyphenate/ru] or @racketmodname[(submod hyphenate/ru safe)] and using the @racket[hyphenate] function normally. (Hat tip to Natanael de Kross for finding the patterns, originally created by Alexander I. Lebedev.)
 
 @section{License & source code}
 
