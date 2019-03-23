@@ -23,7 +23,8 @@
              #:omit-string (string? . -> . any/c)
              #:omit-txexpr (txexpr? . -> . any/c)
              #:min-left-length (or/c (and/c integer? positive?) #f)
-             #:min-right-length (or/c (and/c integer? positive?) #f)) . ->* . xexpr/c))
+             #:min-right-length (or/c (and/c integer? positive?) #f)
+             #:min-hyphens (and/c integer? positive?)) . ->* . xexpr/c))
 
 (define (make-hyphenate-function patterns exceptions)
   (make-keyword-procedure

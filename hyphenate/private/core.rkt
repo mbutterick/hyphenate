@@ -11,6 +11,7 @@
 (define default-min-left-length 2)
 (define default-min-right-length 2)
 (define default-joiner #\u00AD)
+(define default-min-hyphen-count 1)
 
 
 (define (exception-word->word+pattern ew)
@@ -108,11 +109,11 @@
                              [substr (in-value (substring word-with-boundaries start (add1 end)))]
                              [partial-pattern (in-value (hash-ref pattern-cache (string->symbol substr) #f))]
                              #:when partial-pattern)
-                            ;; pad out partial-pattern to full length
-                            ;; (so we can compare patterns to find max value for each slot)
-                            (define left-zeroes (make-list start 0))
-                            (define right-zeroes (make-list (- (add1 word-length) (length partial-pattern) start) 0))
-                            (append left-zeroes partial-pattern right-zeroes)))
+                   ;; pad out partial-pattern to full length
+                   ;; (so we can compare patterns to find max value for each slot)
+                   (define left-zeroes (make-list start 0))
+                   (define right-zeroes (make-list (- (add1 word-length) (length partial-pattern) start) 0))
+                   (append left-zeroes partial-pattern right-zeroes)))
                (define max-pattern (calculate-max-pattern (cons default-zero-pattern matching-patterns)))
                ;; for point list generated from a pattern,
                ;; drop first two elements because they represent hyphenation weight
@@ -141,20 +142,20 @@
               [left-zeroes (min (or min-left-length default-min-left-length) (length points))]
               [right-zeroes (min (or min-right-length default-min-right-length) (length points))])
          (for/list ([(point idx) (in-indexed points)])
-                   (if (<= left-zeroes (add1 idx) (- (length points) right-zeroes))
-                       point
-                       0))))
+           (if (<= left-zeroes (add1 idx) (- (length points) right-zeroes))
+               point
+               0))))
      
      ;; odd-valued points in the pattern denote hyphenation points
      (define odd-point-indexes (for/list ([(wp idx) (in-indexed word-points)]
                                           #:when (odd? wp))
-                                         idx))
+                                 idx))
      
      ;; the hyphenation goes after the indexed letter, so add1 to the raw points for slicing
      (define breakpoints (append (list 0) (map add1 odd-point-indexes) (list (string-length word))))
      (for/list ([start (in-list breakpoints)]
                 [end (in-list (cdr breakpoints))]) ; shorter list controls exit of loop
-               (substring word start end))]))
+       (substring word start end))]))
 
 
 ;; joiner contract allows char or string; this coerces to string.
@@ -168,7 +169,7 @@
        ;; handle intercapped words as capitalized pieces
        (define letter-before-uc #px"(?<=\\p{Ll})(?=\\p{Lu}\\p{Ll})") ; match xXx but not xXX or XXX
        (string-join (for/list ([x (in-list (string-split x letter-before-uc))])
-                              (proc x)) (joiner->string joiner))]
+                      (proc x)) (joiner->string joiner))]
       [(and (txexpr? x) (not (omit-txexpr x))) 
        (make-txexpr (get-tag x) (get-attrs x) (map loop (get-elements x)))]
       [else x])))
@@ -179,6 +180,7 @@
                    #:min-length [min-length default-min-length]
                    #:min-left-length [min-left-length default-min-left-length]
                    #:min-right-length [min-right-length default-min-right-length]
+                   #:min-hyphens [min-hyphens-added default-min-hyphen-count]
                    #:omit-word [omit-word? (λ (x) #f)]
                    #:omit-string [omit-string? (λ (x) #f)]
                    #:omit-txexpr [omit-txexpr? (λ (x) #f)])
@@ -187,15 +189,14 @@
   (for-each (λ (ee) (add-exception-word word-cache ee))  extra-exceptions)
   (define word-pattern #px"\\p{L}+") ;; more restrictive than exception-word
   (define (replacer word . words)
-    (if (omit-word? word) 
-        word
-        (string-join (word->hyphenation-points word
-                                               word-cache
-                                               pattern-cache
-                                               min-length
-                                               min-left-length
-                                               min-right-length)
-                     (joiner->string joiner))))
+    (cond
+      [(omit-word? word) word]
+      [else (define hyphenation-points
+              (word->hyphenation-points word word-cache pattern-cache min-length min-left-length min-right-length))
+            (cond
+              [(>= (sub1 (length hyphenation-points)) min-hyphens-added)
+               (string-join hyphenation-points (joiner->string joiner))]
+              [else word])]))
   (define (insert-hyphens text) (regexp-replace* word-pattern text replacer))
   (begin0
     (apply-proc insert-hyphens x omit-string? omit-txexpr? joiner)

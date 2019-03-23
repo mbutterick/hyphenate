@@ -11,9 +11,14 @@
 
 (check-equal? (hyphenate "edges") "edges") ;; word without matching patterns
 (check-equal? (hyphenate "polymorphism") "poly\u00ADmor\u00ADphism")
+(check-equal? (hyphenate "polymorphism" #:min-hyphens 1) "poly\u00ADmor\u00ADphism")
+(check-equal? (hyphenate "polymorphism" #:min-hyphens 2) "poly\u00ADmor\u00ADphism")
+(check-equal? (hyphenate "polymorphism" #:min-hyphens 3) "polymorphism")
+(check-equal? (hyphenate "polymorphism" #:min-hyphens 42) "polymorphism")
 (check-equal? (hyphenate "POLYmorPHISM") "POLY\u00ADmor\u00ADPHISM")
 (check-equal? (hyphenate "polymorphism" #:min-length 100) "polymorphism")
 (check-equal? (hyphenate "ugly" #:min-length 1) "ug\u00ADly")
+(check-equal? (hyphenate "ugly" #:min-length 1 #:min-hyphens 2) "ugly")
 (check-equal? (unhyphenate "poly\u00ADmor\u00ADphism") "polymorphism")
 (check-equal? (hyphenate "polymorphism" #\-) "poly-mor-phism")
 (check-equal? (hyphenate "compotumi" #\-) "com-po-tu-mi")
@@ -21,6 +26,8 @@
 (check-equal? (hyphenate "polymorphism" "foo") "polyfoomorfoophism")
 (check-equal? (unhyphenate "polyfoomorfoophism" "foo") "polymorphism")
 (check-equal? (hyphenate "circular polymorphism squandering") "cir\u00ADcu\u00ADlar poly\u00ADmor\u00ADphism squan\u00ADder\u00ADing")
+(check-equal? (hyphenate "circular polymorphism squandering" #:min-hyphens 2) "cir\u00ADcu\u00ADlar poly\u00ADmor\u00ADphism squan\u00ADder\u00ADing")
+(check-equal? (hyphenate "circular polymorphism squandering" #:min-hyphens 3) "circular polymorphism squandering")
 (check-equal? (hyphenate '(p "circular polymorphism" amp (em "squandering"))) '(p "cir\u00ADcu\u00ADlar poly\u00ADmor\u00ADphism" amp (em "squan\u00ADder\u00ADing")))
 (check-equal? (hyphenate "present project") "present project") ; exception words
 ;; test these last so exceptions have been set up already

@@ -41,6 +41,7 @@ Safe mode enables the function contracts documented below. Use safe mode by impo
 [#:min-length length (or/c integer? false?) 5]
 [#:min-left-length left-length (or/c (and/c integer? positive?) #f) 2]
 [#:min-right-length right-length (or/c (and/c integer? positive?) #f) 2]
+[#:min-hyphens min-hyphen-count (and/c integer? positive?) 1]
 [#:omit-word word-test (string? . -> . any/c) (λ (x) #f)]
 [#:omit-string string-test (string? . -> . any/c) (λ (x) #f)]
 [#:omit-txexpr txexpr-test (txexpr? . -> . any/c) (λ (x) #f)])
@@ -50,22 +51,33 @@ Hyphenate @racket[_xexpr] by calculating hyphenation points and inserting @racke
 @margin-note{The REPL displays a soft hyphen as @code{\u00AD}. But in ordinary use, you'll only see a soft hyphen when it appears at the end of a line or page as part of a hyphenated word. Otherwise it's not displayed. In most of the examples here, I use a standard hyphen for clarity (by adding @code{#\-} as an argument).}
 
 @examples[#:eval my-eval
-     (hyphenate "ergo polymorphism")
-     (hyphenate "ergo polymorphism" #\-)
-     (hyphenate "ergo polymorphism" #:min-length 13)
-     (hyphenate "ergo polymorphism" #:min-length #f)
+     (hyphenate "snowman polymorphism")
+     (hyphenate "snowman polymorphism" #\-)
+     (hyphenate "snowman polymorphism" #:min-length 13)
+     (hyphenate "snowman polymorphism" #:min-length #f)
    ]
 
 The @racket[#:min-left-length] and @racket[#:min-right-length] keyword arguments set the minimum distance between a potential hyphen and the left or right ends of the word. The default is 2 characters. Larger values will reduce hyphens, but also prevent small words from breaking. These values will override a smaller @racket[#:min-length] value.
 
 @examples[#:eval my-eval
-     (hyphenate "ergo polymorphism" #\-)
-     (hyphenate "ergo polymorphism" #\- #:min-left-length #f)
-     (hyphenate "ergo polymorphism" #\- #:min-length 2 #:min-left-length 5)
-     (hyphenate "ergo polymorphism" #\- #:min-right-length 6)
+     (hyphenate "snowman polymorphism" #\-)
+     (hyphenate "snowman polymorphism" #\- #:min-left-length #f)
+     (hyphenate "snowman polymorphism" #\- #:min-length 2 #:min-left-length 5)
+     (hyphenate "snowman polymorphism" #\- #:min-right-length 6)
      (code:comment @#,t{Next words won't be hyphenated becase of large #:min-left-length})
-     (hyphenate "ergo polymorphism" #\- #:min-length #f #:min-left-length 15)
+     (hyphenate "snowman polymorphism" #\- #:min-length #f #:min-left-length 15)
    ] 
+
+Another way of controlling hyphen frequency is with the @racket[#:min-hyphens] keyword argument, which sets the minimum number of hyphens in a hyphenatable word. (It has no effect on non-hyphenatable words.) The default is 1 hyphen. Larger values will reduce hyphens, but also prevent small words from breaking.
+
+@examples[#:eval my-eval
+     (hyphenate "snowman polymorphism" #\-)
+     (hyphenate "snowman polymorphism" #\- #:min-hyphens 1)
+     (code:comment @#,t{next "snowman" won't be hyphenated becase it doesn't have 2 hyphens})
+     (hyphenate "snowman polymorphism" #\- #:min-hyphens 2)
+     (code:comment @#,t{next "polymorphism" won't be hyphenated becase it doesn't have 3 hyphens})
+     (hyphenate "snowman polymorphism" #\- #:min-hyphens 3)
+]
 
 Because the hyphenation is based on an algorithm rather than a dictionary, it makes good guesses with unusual words:
 
