@@ -52,9 +52,9 @@
   (unless (and (file-exists? cache-path)
                (> (file-or-directory-modify-seconds cache-path)
                   (file-or-directory-modify-seconds module-path)))
-    (define op (open-output-file cache-path #:exists 'replace))
-    (s-exp->fasl (dynamic-require module-path id-sym) op)
-    (flush-output op))
+    (with-output-to-file cache-path
+      (λ () (s-exp->fasl (dynamic-require module-path id-sym) (current-output-port)))
+      #:exists 'replace))
   (fasl->s-exp (open-input-file cache-path)))
 
 (define-syntax (mb stx)
