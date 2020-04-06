@@ -5,5 +5,4 @@
   #;(for ([mod '(hyphenate/us hyphenate/fr)])
     (displayln (format "running post-installer in ~a" mod))
     (define proc (dynamic-require mod 'post-installer))
-    (proc home-dir))
-  (void))
+    (proc home-dir)))
