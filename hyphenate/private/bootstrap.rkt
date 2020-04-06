@@ -4,7 +4,6 @@
          sugar/define
          racket/contract
          racket/file
-         racket/fasl
          (only-in xml xexpr/c)
          (prefix-in core: hyphenate/private/core))
 
@@ -52,8 +51,8 @@
   (unless (and (file-exists? cache-path)
                (> (file-or-directory-modify-seconds cache-path)
                   (file-or-directory-modify-seconds module-path)))
-    (s-exp->fasl (dynamic-require module-path id-sym) (open-output-file cache-path #:exists 'replace)))
-  (fasl->s-exp (open-input-file cache-path)))
+    (write-to-file (dynamic-require module-path id-sym) cache-path #:exists 'replace))
+  (file->value cache-path))
 
 (define-syntax (mb stx)
   (syntax-case stx () 
@@ -68,15 +67,12 @@
                      [PATTERNS-ID 'patterns]
                      [EXCEPTIONS-ID 'exceptions])
          #'(#%module-begin
-            (define PATTERNS-ID (load-from-cache-if-possible PATTERNS-PATH PATTERN-CACHE-PATH 'PATTERNS-ID))
-            ;; a file-cached hash is immutable, so convert it
-            (define EXCEPTIONS-ID (make-hash (hash->list (load-from-cache-if-possible EXCEPTIONS-PATH EXCEPTIONS-CACHE-PATH 'EXCEPTIONS-ID))))
-            (define+provide (post-installer home-dir)
-              (load-from-cache-if-possible PATTERNS-PATH PATTERN-CACHE-PATH 'PATTERNS-ID)
-              (load-from-cache-if-possible EXCEPTIONS-PATH EXCEPTIONS-CACHE-PATH 'EXCEPTIONS-ID))
-            (define+provide+safe hyphenate
-              hyphenate/c
-              (make-hyphenate-function PATTERNS-ID EXCEPTIONS-ID))
-            (define+provide+safe unhyphenate
-              unhyphenate/c
-              (make-unhyphenate-function)))))]))
+             (define PATTERNS-ID (load-from-cache-if-possible PATTERNS-PATH PATTERN-CACHE-PATH 'PATTERNS-ID))
+             ;; a file-cached hash is immutable, so convert it
+             (define EXCEPTIONS-ID (make-hash (hash->list (load-from-cache-if-possible EXCEPTIONS-PATH EXCEPTIONS-CACHE-PATH 'EXCEPTIONS-ID))))
+             (define+provide+safe hyphenate
+               hyphenate/c
+               (make-hyphenate-function PATTERNS-ID EXCEPTIONS-ID))
+             (define+provide+safe unhyphenate
+               unhyphenate/c
+               (make-unhyphenate-function)))))]))
