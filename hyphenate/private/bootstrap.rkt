@@ -55,7 +55,8 @@
     (with-output-to-file cache-path
       (λ () (s-exp->fasl (dynamic-require module-path id-sym) (current-output-port)))
       #:exists 'replace))
-  (fasl->s-exp (open-input-file cache-path)))
+  (with-input-from-file cache-path
+    (λ () (fasl->s-exp (current-input-port)))))
 
 (define-syntax (mb stx)
   (syntax-case stx () 
