@@ -1,4 +1,4 @@
-#lang racket/base
+#lang debug racket/base
 (require (for-syntax racket/base syntax/strip-context)
          txexpr/base
          sugar/define
@@ -49,25 +49,27 @@
               #:omit-txexpr (txexpr? . -> . any/c)) . ->* . xexpr/c))
 
 (define (load-from-cache-if-possible module-path cache-path id-sym)
-  (unless (and (file-exists? cache-path)
-               (> (file-or-directory-modify-seconds cache-path)
-                  (file-or-directory-modify-seconds module-path)))
-    (with-output-to-file cache-path
-      (λ () (s-exp->fasl (dynamic-require module-path id-sym) (current-output-port)))
-      #:exists 'replace))
-  (with-input-from-file cache-path
-    (λ () (fasl->s-exp (current-input-port)))))
+  (when (file-exists? module-path)
+    (unless (and (file-exists? cache-path)
+                 (> (file-or-directory-modify-seconds cache-path)
+                    (file-or-directory-modify-seconds module-path)))
+      (with-output-to-file cache-path
+        (λ () (s-exp->fasl (dynamic-require module-path id-sym) (current-output-port)))
+        #:exists 'replace)))
+  (if (file-exists? cache-path)
+      (with-input-from-file cache-path (λ () (fasl->s-exp (current-input-port))))
+      (hash)))
 
 (define-syntax (mb stx)
   (syntax-case stx () 
-    [(_ DIR)
+    [(_ LANGCODE)
      (let* ([base (let-values ([(base name _) (split-path (syntax-source stx))])
                     base)]
-            [dir (build-path base (symbol->string (syntax->datum #'DIR)))])
-       (with-syntax ([PATTERNS-PATH (build-path dir "patterns.rkt")]
-                     [PATTERN-CACHE-PATH (build-path dir "compiled" "patterns-cache.rktd")]
-                     [EXCEPTIONS-PATH  (build-path dir "exceptions.rkt")]
-                     [EXCEPTIONS-CACHE-PATH (build-path dir "compiled" "exceptions-cache.rktd")]
+            [langcode (symbol->string (syntax->datum #'LANGCODE))])
+       (with-syntax ([PATTERNS-PATH (build-path base "patterns" (format "~a-patterns.rkt" langcode))]
+                     [PATTERN-CACHE-PATH (build-path base "patterns" "compiled" (format "~a-patterns-cache.rktd" langcode))]
+                     [EXCEPTIONS-PATH  (build-path base "patterns" (format "~a-exceptions.rkt" langcode))]
+                     [EXCEPTIONS-CACHE-PATH (build-path base "patterns" "compiled" (format  "~a-exceptions-cache.rktd" langcode))]
                      [PATTERNS-ID 'patterns]
                      [EXCEPTIONS-ID 'exceptions])
          #'(#%module-begin

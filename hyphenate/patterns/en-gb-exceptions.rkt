@@ -1,0 +1,9 @@
+#lang hyphenate/private/exception-prep
+uni-ver-sity
+uni-ver-sit-ies
+how-ever
+ma-nu-script
+ma-nu-scripts
+re-ci-pro-city
+through-out
+some-thing

@@ -1,0 +1,6 @@
+#lang hyphenate/private/exception-prep
+koe-fi-ci-ent
+koe-fi-ci-en-ty
+pro-jek-ční
+úhlo-příč-ka
+úhlo-příč-ky
