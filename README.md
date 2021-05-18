@@ -1,5 +1,5 @@
-hyphenate ![Build Status](https://github.com/mbutterick/hyphenate/workflows/CI/badge.svg)
----------
+## hyphenate ![Build Status](https://github.com/mbutterick/hyphenate/workflows/CI/badge.svg)
+
 
 Racket implementation of the Knuth–Liang hyphenation algorithm.
 
@@ -26,3 +26,8 @@ And enjoy:
     > "Hy-phen-ation al-go-rithm"
     
 Full docs are installed with the package. You can also [read the docs here](http://pkg-build.racket-lang.org/doc/hyphenate).
+
+
+## Project status
+
+Complete. Maintained but no further updates planned. Once upon a time, I had an ambition to support more languages. But I don’t personally need that, and no one is clamoring for it.
